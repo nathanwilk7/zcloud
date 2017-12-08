@@ -27,6 +27,11 @@ func GetCmdArgs (cmd *exec.Cmd, args []string) []string {
 	return resArgs
 }
 
+const cloudURLPrefix = "cloud://"
+
 func ConvertURL (url string) string {
-	return strings.Replace(url, "cloud", "s3", 1)
+	if len(url) > len(cloudURLPrefix) && url[:len(cloudURLPrefix)] == cloudURLPrefix {
+		return strings.Replace(url, "cloud", "s3", 1)
+	}
+	return url
 }

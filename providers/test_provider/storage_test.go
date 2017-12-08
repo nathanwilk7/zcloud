@@ -9,7 +9,7 @@ import (
 func TestCp (t *testing.T) {
 	p := testProvider{}
 	params := storage.CpParams{}
-	if err := p.Cp(params); err != nil {
+	if _, err := p.Cp(params); err != nil {
 		t.Fatal(err)
 	}
 }
