@@ -4,10 +4,12 @@ ZCloud is intended to prevent coupling to specific cloud providers when using cl
 ### How to Get
 
 (hopefully, if your go env is set up right)
-`go get -u github.com/nathanwilk7/zcloud`
+```bash
+go get -u github.com/nathanwilk7/zcloud
+```
 
 (otherwise, from src)
-```
+```bash
 git clone https://github.com/nathanwilk7/zcloud
 cd zcloud
 go install
@@ -15,15 +17,19 @@ go install
 
 ### Example Usage
 First, set the ZCloud env vars for aws:
-```
+```bash
 export ZCLOUD_PROV=AWS
 export ZCLOUD_AWS_KEY_ID=$AWS_ACCESS_KEY_ID
 export ZCLOUD_AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY
 ```
 Then, copy a file to s3:
-`zcloud storage cp <src path> cloud://<bucket-name>/`
+```bash
+zcloud storage cp <src path> cloud://<bucket-name>/
+```
 Or, copy a file from s3:
-`zcloud storage cp cloud://<bucket-name>/<filename> <dest path>`
+```bash
+zcloud storage cp cloud://<bucket-name>/<filename> <dest path>
+```
 Basically, usage mirrors that of `aws s3 cp` or `gsutil cp`
 
 ### Current State
