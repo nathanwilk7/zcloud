@@ -1,4 +1,4 @@
-package main
+package compute
 
 type ComputeProvider interface {
 	Start ()
