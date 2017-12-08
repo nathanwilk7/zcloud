@@ -7,15 +7,19 @@ ZCloud is intended to prevent coupling to specific cloud providers when using cl
 `go get -u github.com/nathanwilk7/zcloud`
 
 (otherwise, from src)
-```git clone https://github.com/nathanwilk7/zcloud
+```
+git clone https://github.com/nathanwilk7/zcloud
 cd zcloud
-go install```
+go install
+```
 
 ### Example Usage
 First, set the ZCloud env vars for aws:
-```export ZCLOUD_PROV=AWS
+```
+export ZCLOUD_PROV=AWS
 export ZCLOUD_AWS_KEY_ID=$AWS_ACCESS_KEY_ID
-export ZCLOUD_AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY```
+export ZCLOUD_AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY
+```
 Then, copy a file to s3:
 `zcloud storage cp <src path> cloud://<bucket-name>/`
 Or, copy a file from s3:
