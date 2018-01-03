@@ -3,7 +3,7 @@ package providers
 import (
 	"errors"
 	"fmt"
-	"log"
+
 	"os"
 	
 	"github.com/nathanwilk7/zcloud/storage"
@@ -19,10 +19,39 @@ type Provider interface {
 	compute.ComputeProvider
 }
 
-const ZCloudProvEnv = "ZCLOUD_PROV" 
+const (
+	ZCloudProvEnv = "ZCLOUD_PROV"
+	ZCloudStorageProvEnv = "ZCLOUD_STORAGE_PROV"
+)
 
+func getProvEnv() string {
+	return os.Getenv(ZCloudProvEnv)
+}
+
+// TODO: How to avoid duplication between getProvider and getStorageProvider?
 func getProvider() (Provider, error) {
-	prov := os.Getenv(ZCloudProvEnv)
+	prov := getProvEnv()
+	switch prov {
+	case "TEST":
+		return test_provider.TestProvider(), nil
+	// case "AWS":
+	// 	return aws.AwsProvider(), nil
+	case "GCLOUD":
+		return gcloud.GCloudProvider(), nil
+	default:
+		return nil, errors.New(fmt.Sprintf("%s was not valid or was empty: %s", ZCloudProvEnv, prov))
+	}
+}
+
+func GetProvider() (Provider, error) {
+	return getProvider()
+}
+
+func getStorageProvider() (storage.StorageProvider, error) {
+	prov := os.Getenv(ZCloudStorageProvEnv)
+	if prov == "" {
+		prov = getProvEnv()
+	}
 	switch prov {
 	case "TEST":
 		return test_provider.TestProvider(), nil
@@ -31,16 +60,10 @@ func getProvider() (Provider, error) {
 	case "GCLOUD":
 		return gcloud.GCloudProvider(), nil
 	default:
-		return nil, errors.New(fmt.Sprintf("%s was not valid or was empty: %s", ZCloudProvEnv, prov))
+		return nil, errors.New(fmt.Sprintf("%s and %s were not valid or were empty: %s", ZCloudProvEnv, ZCloudStorageProvEnv, prov))
 	}
 }
 
-var ProviderInstance Provider
-
-func init () {
-	providerInstance, err := getProvider()
-	if err != nil {
-		log.Fatal(err)
-	}
-	ProviderInstance = providerInstance
+func GetStorageProvider() (storage.StorageProvider, error) {
+	return getStorageProvider()
 }

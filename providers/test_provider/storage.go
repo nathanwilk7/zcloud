@@ -7,3 +7,7 @@ import (
 func (p testProvider) Cp (params storage.CpParams) (string, error) {
 	return "", nil
 }
+
+func (p testProvider) Ls (params storage.LsParams) (string, error) {
+	return "", nil
+}

@@ -1,22 +1,38 @@
 package aws
 
 import (
-	"os/exec"
-	
 	"github.com/nathanwilk7/zcloud/storage"
 )
 
+// TODO: How to avoid duplication between Cp and Ls? Maybe use an interface with GetArgs() or something?
 func (p awsProvider) Cp (params storage.CpParams) (string, error) {
-	keyId, secret := p.getEnvCreds()
-	cmd := exec.Command("aws")
-	args := []string{"s3", "cp", ConvertURL(params.Src), ConvertURL(params.Dest)}
+	args := []string{}
 	if params.Recursive {
 		args = append(args, "--recursive")
 	}
-	cmd.Args = GetCmdArgs(cmd, args)
-	cmd.Env = []string{keyId, secret}
+	cmd := awsStorageCmd(
+		"cp",
+		[]string{params.Src, params.Dest},
+		args,
+	)
 	if err := cmd.Run(); err != nil {
 		return "", err
 	}
 	return "Copy completed successfully", nil
+}
+
+func (p awsProvider) Ls (params storage.LsParams) (string, error) {
+	args := []string{}
+	if params.Recursive {
+		args = append(args, "--recursive")
+	}
+	cmd := awsStorageCmd(
+		"ls",
+		[]string{params.Url},
+		args,
+	)
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return "List completed successfully", nil
 }
