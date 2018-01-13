@@ -40,11 +40,10 @@ Basically, usage mirrors that of `aws s3 cp` or `gsutil cp`
 - Testing: in progress
 
 ### Roadmap
-- Replace exec calls with something cheaper, probably go's SDK
-- Figure out the best way to config providers and how providers should take care of auth
-- Compute in addition to blob storage
+- Replace exec calls with something cheaper, probably go SDK's or REST
+- Add support for OpenStack
+- Add support for Azure
 - ZCloud SDK's for Go, Python, Java, C#, etc.
-- Support for Azure
-- Support for OpenStack
+- Compute in addition to blob storage
 - Define uniform interface for all cloud services
 - Solve production and distribution of wealth
