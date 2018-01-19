@@ -24,44 +24,36 @@ const (
 	ZCloudStorageProvEnv = "ZCLOUD_STORAGE_PROV"
 )
 
-func getProvEnv() string {
-	return os.Getenv(ZCloudProvEnv)
+var providers = map[string]Provider {
+	"TEST": test_provider.TestProvider(),
+	"GCLOUD": gcloud.GCloudProvider(),
 }
 
-// TODO: How to avoid duplication between getProvider and getStorageProvider?
 func getProvider() (Provider, error) {
-	prov := getProvEnv()
-	switch prov {
-	case "TEST":
-		return test_provider.TestProvider(), nil
-	// case "AWS":
-	// 	return aws.AwsProvider(), nil
-	case "GCLOUD":
-		return gcloud.GCloudProvider(), nil
-	default:
-		return nil, errors.New(fmt.Sprintf("%s was not valid or was empty: %s", ZCloudProvEnv, prov))
+	prov := os.Getenv(ZCloudProvEnv)
+	if p, ok := providers[prov]; ok {
+		return p, nil
 	}
+	return nil, errors.New(fmt.Sprintf("%s was not valid or was empty: %s", ZCloudProvEnv, prov))
 }
 
 func GetProvider() (Provider, error) {
 	return getProvider()
 }
 
+var storageProviders = map[string]storage.StorageProvider {
+	"AWS": aws.AwsProvider(),
+}
+
 func getStorageProvider() (storage.StorageProvider, error) {
+	if p, err := getProvider(); err == nil {
+		return p, nil
+	}
 	prov := os.Getenv(ZCloudStorageProvEnv)
-	if prov == "" {
-		prov = getProvEnv()
+	if p, ok := storageProviders[prov]; ok {
+		return p, nil
 	}
-	switch prov {
-	case "TEST":
-		return test_provider.TestProvider(), nil
-	case "AWS":
-		return aws.AwsProvider(), nil
-	case "GCLOUD":
-		return gcloud.GCloudProvider(), nil
-	default:
-		return nil, errors.New(fmt.Sprintf("%s and %s were not valid or were empty: %s", ZCloudProvEnv, ZCloudStorageProvEnv, prov))
-	}
+	return nil, errors.New(fmt.Sprintf("%s and %s were not valid or were empty: %s", ZCloudProvEnv, ZCloudStorageProvEnv, prov))
 }
 
 func GetStorageProvider() (storage.StorageProvider, error) {
