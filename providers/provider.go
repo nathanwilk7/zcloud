@@ -27,12 +27,10 @@ func GetProvider () (Provider, error) {
 	return getProvider()
 }
 
-func getProvider () (Provider, error) {
+func getProvider() (Provider, error) {
 	prov := os.Getenv(ZCloudProvEnv)
-	if prov != "" {
-		if prov, ok := providers[prov]; ok {
-			return prov, nil
-		}
+	if p, ok := providers[prov]; ok {
+		return p, nil
 	}
 	return nil, errors.New(fmt.Sprintf("%s was not valid or was empty: %s", ZCloudProvEnv, prov))
 }
@@ -46,16 +44,13 @@ func GetStorageProvider () (storage.StorageProvider, error) {
 	return getStorageProvider()
 }
 
-func getStorageProvider () (storage.StorageProvider, error) {
-	prov := os.Getenv(ZCloudStorageProvEnv)
-	if prov != "" {
-		if prov, ok := storageProviders[prov]; ok {
-			return prov, nil
-		}
+func getStorageProvider() (storage.StorageProvider, error) {
+	if p, err := getProvider(); err == nil {
+		return p, nil
 	}
-	return getProvider()
-}
-
-var storageProviders map[string]storage.StorageProvider = map[string]storage.StorageProvider {
-	"AWS": aws.AwsProvider(),
+	prov := os.Getenv(ZCloudStorageProvEnv)
+	if p, ok := storageProviders[prov]; ok {
+		return p, nil
+	}
+	return nil, errors.New(fmt.Sprintf("%s and %s were not valid or were empty: %s", ZCloudProvEnv, ZCloudStorageProvEnv, prov))
 }

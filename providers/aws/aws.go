@@ -13,26 +13,21 @@ func AwsProvider () awsProvider {
 	return awsProvider{}
 }
 
-
-
 func getEnvCreds () (string, string, error) {
 	idEnv := os.Getenv("ZCLOUD_AWS_KEY_ID")
 	secretEnv := os.Getenv("ZCLOUD_AWS_SECRET_KEY")
 	if idEnv == nil || secretEnv == nil {
-		return "", "", errors.New(fmt.Sprintf("
-}
+		// TODO: err message
+		return "", "", errors.New(fmt.Sprintf("env vars not found"))
+	}
 	id := fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", idEnv)
 	secret := fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", secretEnv)
 	return id, secret, nil
 }
 
-// func getCmdArgs (cmd *exec.Cmd, args []string) []string {
-// 	resArgs := cmd.Args
-// 	for _, arg := range args {
-// 		resArgs = append(resArgs, arg)
-// 	}
-// 	return resArgs
-// }
+func getCreds () (string, string) {
+	return getEnvCreds()
+}
 
 const cloudURLPrefix = "cloud://"
 
@@ -44,7 +39,7 @@ func convertURL (url string) string {
 }
 
 func awsStorageCmd (cmdStr string, urls []string, args []string) *exec.Cmd {
-	keyId, secret := getEnvCreds()
+	keyId, secret := getCreds()
 	cmd := exec.Command("aws")
 	cmd.Env = []string{keyId, secret}
 	cmdArgs := []string{"s3", cmdStr}
