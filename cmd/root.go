@@ -24,7 +24,7 @@ func logOutput (q bool, msg string) {
 	}
 }
 
-func parseSrcDest (args []string) (string, string) {
+func parseSrcDestUrl (args []string) (string, string) {
 	src := args[0]
 	dest := args[1]
 	return src, dest

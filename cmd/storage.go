@@ -31,9 +31,7 @@ var CpCmd = &cobra.Command{
 	Long:  `Copy objects long description`,
 	Args: cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		src, dest := parseSrcDest(args)
-		// src := args[0]
-		// dest := args[1]
+		src, dest := parseSrcDestUrl(args)
 		params := storage.NewCpParams(src, dest)
 		params.Recursive = recursive
 		p, err := providers.GetStorageProvider()
@@ -42,7 +40,7 @@ var CpCmd = &cobra.Command{
 		}
 		msg, err := p.Cp(params)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(msg, err)
 		}
 		logOutput(quiet, msg)
 	},
@@ -63,7 +61,7 @@ var LsCmd = &cobra.Command{
 		}
 		msg, err := p.Ls(params)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(msg, err)
 		}
 		logOutput(quiet, msg)
 	},

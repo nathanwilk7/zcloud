@@ -4,7 +4,6 @@ import (
 	"github.com/nathanwilk7/zcloud/storage"
 )
 
-// TODO: How to avoid duplication between Cp and Ls? Maybe use an interface with GetArgs() or something?
 func (p awsProvider) Cp (params storage.CpParams) (string, error) {
 	args := []string{}
 	if params.Recursive {
@@ -35,4 +34,24 @@ func (p awsProvider) Ls (params storage.LsParams) (string, error) {
 		return "", err
 	}
 	return "List completed successfully", nil
+}
+
+func (p awsProvider) Rm (params storage.RmParams) (string, error) {
+	return "", nil
+}
+
+func (p awsProvider) Mv (params storage.MvParams) (string, error) {
+	return "", nil
+}
+
+func (p awsProvider) Mb (params storage.MbParams) (string, error) {
+	return "", nil
+}
+
+func (p awsProvider) Rb (params storage.RmParams) (string, error) {
+	return "", nil
+}
+
+func (p awsProvider) Sync (params storage.SyncParams) (string, error) {
+	return "", nil
 }

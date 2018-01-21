@@ -13,10 +13,17 @@ func AwsProvider () awsProvider {
 	return awsProvider{}
 }
 
-func getEnvCreds () (string, string) {
-	id := fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", os.Getenv("ZCLOUD_AWS_KEY_ID"))
-	secret := fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", os.Getenv("ZCLOUD_AWS_SECRET_KEY"))
-	return id, secret
+
+
+func getEnvCreds () (string, string, error) {
+	idEnv := os.Getenv("ZCLOUD_AWS_KEY_ID")
+	secretEnv := os.Getenv("ZCLOUD_AWS_SECRET_KEY")
+	if idEnv == nil || secretEnv == nil {
+		return "", "", errors.New(fmt.Sprintf("
+}
+	id := fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", idEnv)
+	secret := fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", secretEnv)
+	return id, secret, nil
 }
 
 // func getCmdArgs (cmd *exec.Cmd, args []string) []string {
