@@ -37,7 +37,7 @@ func (p awsProvider) Upload (params storage.CpParams) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to upload file, %v", err)
 	}
-	return fmt.Sprintf("file uploaded to, %s\n", aws.StringValue(&result.Location)), nil
+	return fmt.Sprintf("%s uploaded to %s\n", params.Src, aws.StringValue(&result.Location)), nil
 }
 
 func (p awsProvider) Download (params storage.CpParams) (string, error) {
