@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"log"
+	"fmt"
 	
 	"github.com/spf13/cobra"
 )
@@ -9,27 +9,17 @@ import (
 var RootCmd = &cobra.Command{
 	Use:   "zcloud",
 	Short: "zCloud makes using the cloud better",
-	Long: "zCloud provides a layer of abstraction between clients using cloud providers to prevent cloud provider coupling",
-}
-
-func init () {
-	CpCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Don't print output")
+	Long: "zCloud provides a layer of abstraction between clients and cloud providers",
 }
 
 var quiet bool
 
-func logOutput (q bool, msg string) {
-	if !q {
-		log.Println(msg)
+func init () {
+	RootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Don't print output")
+}
+
+func writeOutput (msg string) {
+	if !quiet {
+		fmt.Println(msg)
 	}
-}
-
-func parseSrcDestUrl (args []string) (string, string) {
-	src := args[0]
-	dest := args[1]
-	return src, dest
-}
-
-func parseUrl (args []string) string {
-	return args[0]
 }

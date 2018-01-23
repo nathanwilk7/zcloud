@@ -11,58 +11,61 @@ import (
 
 var StorageCmd = &cobra.Command{
 	Use:   "storage",
-	Short: "Store objects",
-	Long:  "Store objects long description",
+	Short: "Blob storage",
+	Long:  "Perform various operations related to blob storage",
 }
+
+var cpRecursive bool
+var lsRecursive bool
 
 func init () {
-	CpCmd.Flags().BoolVarP(&recursive, "recursive", "r", false, "Recursively copy from src")
+	CpCmd.Flags().BoolVarP(&cpRecursive, "recursive", "r", false, "Recursively copy from src")
 	StorageCmd.AddCommand(CpCmd)
 
-	LsCmd.Flags().BoolVarP(&recursive, "recursive", "r", false, "Recursively list")
+	LsCmd.Flags().BoolVarP(&lsRecursive, "recursive", "r", false, "Recursively list")
 	StorageCmd.AddCommand(LsCmd)
 }
-
-var recursive bool
 
 var CpCmd = &cobra.Command{
 	Use:   "cp",
 	Short: "Copy objects",
-	Long:  `Copy objects long description`,
+	Long:  "Copy objects to/from a provider",
 	Args: cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		src, dest := parseSrcDestUrl(args)
+		src, dest := args[0], args[1]
 		params := storage.NewCpParams(src, dest)
-		params.Recursive = recursive
-		p, err := providers.GetStorageProvider()
-		if err != nil {
-			log.Fatal(err)
-		}
+		params.Recursive = cpRecursive
+		p := mustGetStorageProvider()
 		msg, err := p.Cp(params)
 		if err != nil {
 			log.Fatal(msg, err)
 		}
-		logOutput(quiet, msg)
+		writeOutput(msg)
 	},
 }
 
 var LsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List objects",
-	Long:  `List objects long description`,
+	Long:  "List objects stored in a provider",
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		url := parseUrl(args)
+		url := args[0]
 		params := storage.NewLsParams(url)
-		params.Recursive = recursive
-		p, err := providers.GetStorageProvider()
-		if err != nil {
-			log.Fatal(err)
-		}
+		params.Recursive = lsRecursive
+		p := mustGetStorageProvider()
 		msg, err := p.Ls(params)
 		if err != nil {
 			log.Fatal(msg, err)
 		}
-		logOutput(quiet, msg)
+		writeOutput(msg)
 	},
+}
+
+func mustGetStorageProvider () storage.StorageProvider {
+	p, err := providers.GetStorageProvider()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return p
 }
