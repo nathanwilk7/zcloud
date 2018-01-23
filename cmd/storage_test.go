@@ -4,6 +4,6 @@ import (
 	"testing"
 )
 
-func TestCp (t *testing.T) {
-	
+func TestMustGetStorageProvider (t *testing.T) {
+	_ = mustGetStorageProvider()
 }

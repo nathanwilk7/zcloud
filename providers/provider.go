@@ -1,16 +1,15 @@
 package providers
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	
 	"github.com/nathanwilk7/zcloud/storage"
 	"github.com/nathanwilk7/zcloud/compute"
 
-	"github.com/nathanwilk7/zcloud/providers/test_provider"
 	"github.com/nathanwilk7/zcloud/providers/aws"
 	"github.com/nathanwilk7/zcloud/providers/gcloud"
+	"github.com/nathanwilk7/zcloud/providers/test_provider"
 )
 
 type Provider interface {
@@ -32,7 +31,7 @@ func getProvider() (Provider, error) {
 	if p, ok := providers[prov]; ok {
 		return p, nil
 	}
-	return nil, errors.New(fmt.Sprintf("%s was not valid or was empty: %s", ZCloudProvEnv, prov))
+	return nil, fmt.Errorf("%s was not valid or was empty: %s", ZCloudProvEnv, prov)
 }
 
 var providers map[string]Provider = map[string]Provider {
@@ -45,14 +44,14 @@ func GetStorageProvider () (storage.StorageProvider, error) {
 }
 
 func getStorageProvider() (storage.StorageProvider, error) {
-	if p, err := getProvider(); err == nil {
-		return p, nil
-	}
 	prov := os.Getenv(ZCloudStorageProvEnv)
 	if p, ok := storageProviders[prov]; ok {
 		return p, nil
 	}
-	return nil, errors.New(fmt.Sprintf("%s and %s were not valid or were empty: %s", ZCloudProvEnv, ZCloudStorageProvEnv, prov))
+	if p, err := getProvider(); err == nil {
+		return p, nil
+	}
+	return nil, fmt.Errorf("%s and %s were not valid or were empty: %s, %s", ZCloudProvEnv, ZCloudStorageProvEnv, prov, os.Getenv(ZCloudProvEnv))
 }
 
 var storageProviders map[string]storage.StorageProvider = map[string]storage.StorageProvider {
