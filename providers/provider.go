@@ -54,3 +54,7 @@ func getStorageProvider() (storage.StorageProvider, error) {
 	}
 	return nil, errors.New(fmt.Sprintf("%s and %s were not valid or were empty: %s", ZCloudProvEnv, ZCloudStorageProvEnv, prov))
 }
+
+var storageProviders map[string]storage.StorageProvider = map[string]storage.StorageProvider {
+	"AWS": aws.AwsProvider(),
+}
