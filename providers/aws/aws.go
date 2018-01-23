@@ -17,7 +17,7 @@ func AwsProvider () awsProvider {
 }
 
 const idEnv = "ZCLOUD_AWS_KEY_ID"
-const secretEnv = "ZCLOUD_AWS_KEY_ID"
+const secretEnv = "ZCLOUD_AWS_SECRET_KEY"
 
 func getCreds () (string, string, error) {
 	return getEnvCreds()
@@ -44,10 +44,12 @@ func getSession () (*session.Session, error) {
 	if region == "" {
 		return nil, fmt.Errorf("%s was empty", regionEnv)
 	}
-	sess, err := session.NewSession(
-		&aws.Config{
-			Region: aws.String(region),
-			Credentials: credentials.NewStaticCredentials(id, secret, defaultToken),
+	sess, err := session.NewSessionWithOptions(
+		session.Options{
+			Config: aws.Config{
+				Region: aws.String(region),
+				Credentials: credentials.NewStaticCredentials(id, secret, defaultToken),
+			},
 		},
 	)
 	if err != nil {
