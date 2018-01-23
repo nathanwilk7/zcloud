@@ -9,6 +9,8 @@ import (
 	"github.com/nathanwilk7/zcloud/storage"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
@@ -18,7 +20,7 @@ func (p awsProvider) Upload (params storage.CpParams) (string, error) {
 		return "", fmt.Errorf("failed to open file %s, %v", params.Src, err)
 	}
 	dest := convertURL(params.Dest)
-	myBucket, myKey, err := getS3BucketKeyFromURL(dest)
+	bucket, key, err := getS3BucketKeyFromURL(dest)
 	if err != nil {
 		return "", err
 	}
@@ -29,15 +31,15 @@ func (p awsProvider) Upload (params storage.CpParams) (string, error) {
 	uploader := s3manager.NewUploader(sess)
 	result, err := uploader.Upload(
 		&s3manager.UploadInput{
-			Bucket: aws.String(myBucket),
-			Key:    aws.String(myKey),
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
 			Body:   f,
 		},
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload file, %v", err)
 	}
-	return fmt.Sprintf("%s uploaded to %s\n", params.Src, aws.StringValue(&result.Location)), nil
+	return fmt.Sprintf("%s uploaded to %s", params.Src, aws.StringValue(&result.Location)), nil
 }
 
 func (p awsProvider) Download (params storage.CpParams) (string, error) {
@@ -51,13 +53,47 @@ func (p awsProvider) Cp (params storage.CpParams) (string, error) {
 		return p.Upload(params)
 	}
 	return "", errors.New(fmt.Sprintf("Exactly one of the source and destination url's must be a cloud url: %s, %s", params.Src, params.Dest))
-	//if params.Recursive {
-	 //	panic("TODO recursive")
-	//}
 }
 
 func (p awsProvider) Ls (params storage.LsParams) (string, error) {
-	return "", nil
+	sess, err := getSession()
+	if err != nil {
+		return "", err
+	}
+	svc := s3.New(sess)
+	url := convertURL(params.Url)
+	bucket, key, err := getS3BucketKeyFromURL(url)
+	if err != nil {
+		return "", err
+	}
+	input := &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(key),
+	}
+	result, err := svc.ListObjectsV2(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				return "", fmt.Errorf(s3.ErrCodeNoSuchBucket, aerr.Error())
+			default:
+				return "", aerr
+			}
+		} else {
+			return "", err
+		}
+		return "", err
+	}
+	out := []string{}
+	for _, content := range result.Contents {
+		key := *content.Key
+		if strings.Contains(key, "/") {
+			out = append(out, key[:strings.Index(key, "/") + 1])
+		} else {
+			out = append(out, key)
+		}
+	}
+	return strings.Join(out, "\n"), nil
 }
 
 func (p awsProvider) Rm (params storage.RmParams) (string, error) {
