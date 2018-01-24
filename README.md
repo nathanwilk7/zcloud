@@ -23,7 +23,7 @@ export ZCLOUD_AWS_REGION="us-east-1"
 export ZCLOUD_AWS_KEY_ID=$AWS_ACCESS_KEY_ID
 export ZCLOUD_AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY
 ```
-Then, copy a file to S3:
+Then, copy a file to S3 (make sure that the bucket you're uploading to exists):
 ```bash
 zcloud storage cp <src path> cloud://<bucket-name>/<filename>
 ```
@@ -44,7 +44,7 @@ After you've authenticated gcloud, set the zCloud provider env var for gcloud:
 ```bash
 export ZCLOUD_PROV=GCLOUD
 ```
-Then, copy a file to Google Cloud Storage:
+Then, copy a file to Google Cloud Storage (make sure that the bucket you're uploading to exists):
 ```bash
 zcloud storage cp <src path> cloud://<bucket-name>/<filename>
 ```
