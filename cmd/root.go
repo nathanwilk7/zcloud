@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	
+	"strings"
+
 	"github.com/spf13/cobra"
 )
 
@@ -22,4 +23,23 @@ func writeOutput (msg string) {
 	if !quiet {
 		fmt.Println(msg)
 	}
+}
+
+const cloudStr = "cloud"
+const cloudURLPrefix = cloudStr + "://"
+
+func convertURL (url, replacement string) string {
+	if isCloudURL(url) {
+		return strings.Replace(url, cloudStr, replacement, 1)
+	}
+	return url
+}
+
+func isCloudURL (url string) bool {
+	if len(url) > len(cloudURLPrefix) {
+		if url[:len(cloudURLPrefix)] == cloudURLPrefix {
+			return true
+		}
+	}
+	return false
 }

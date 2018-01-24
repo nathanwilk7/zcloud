@@ -4,7 +4,11 @@ import (
 	"github.com/nathanwilk7/zcloud/storage"
 )
 
-func (p testProvider) Cp (params storage.CpParams) (string, error) {
+func (p testProvider) Upload (params storage.UploadParams) (string, error) {
+	return "", nil
+}
+
+func (p testProvider) Download (params storage.DownloadParams) (string, error) {
 	return "", nil
 }
 
@@ -30,4 +34,11 @@ func (p testProvider) Rb (params storage.RmParams) (string, error) {
 
 func (p testProvider) Sync (params storage.SyncParams) (string, error) {
 	return "", nil
+}
+
+const testStr = "test"
+const testPrefix = testStr + "://"
+
+func (p testProvider) StorageURLPrefixReplacement() string {
+	return testStr
 }

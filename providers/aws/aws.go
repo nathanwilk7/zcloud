@@ -3,7 +3,6 @@ package aws
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -56,23 +55,4 @@ func getSession () (*session.Session, error) {
 		return nil, err
 	}
 	return sess, nil
-}
-
-const cloudStr = "cloud"
-const cloudURLPrefix = cloudStr + "://"
-
-func convertURL (url string) string {
-	if isCloudURL(url) {
-		return strings.Replace(url, cloudStr, "s3", 1)
-	}
-	return url
-}
-
-func isCloudURL (url string) bool {
-	if len(url) > len(cloudURLPrefix) {
-		if url[:len(cloudURLPrefix)] == cloudURLPrefix {
-			return true
-		}
-	}
-	return false
 }

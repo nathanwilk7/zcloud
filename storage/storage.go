@@ -1,22 +1,37 @@
 package storage
 
 type StorageProvider interface {
-	Cp (CpParams) (string, error)
+	Upload (UploadParams) (string, error)
+	Download (DownloadParams) (string, error)
 	Ls (LsParams) (string, error)
 	Rm (RmParams) (string, error)
 	Mv (MvParams) (string, error)
 	Mb (MbParams) (string, error)
 	Rb (RmParams) (string, error)
 	Sync (SyncParams) (string, error)
+	StorageURLPrefixReplacement() string
 }
 
-type CpParams struct {
+type UploadParams struct {
 	Src, Dest string
 	Recursive bool
 }
 
-func NewCpParams (src string, dest string) CpParams {
-	return CpParams{
+func NewUploadParams (src string, dest string) UploadParams {
+	return UploadParams{
+		Src: src,
+		Dest: dest,
+		Recursive: false,
+	}
+}
+
+type DownloadParams struct {
+	Src, Dest string
+	Recursive bool
+}
+
+func NewDownloadParams (src string, dest string) DownloadParams {
+	return DownloadParams{
 		Src: src,
 		Dest: dest,
 		Recursive: false,
