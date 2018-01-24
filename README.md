@@ -15,26 +15,26 @@ chmod +x install.sh
 ./install.sh
 ```
 
-### Example Usage for AWS
-First, set the zCloud env vars for aws:
+### Example Usage for Amazon Web Services (AWS)
+First, set the zCloud env vars for AWS:
 ```bash
 export ZCLOUD_PROV=AWS
 export ZCLOUD_AWS_REGION="us-east-1"
 export ZCLOUD_AWS_KEY_ID=$AWS_ACCESS_KEY_ID
 export ZCLOUD_AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY
 ```
-Then, copy a file to s3:
+Then, copy a file to S3:
 ```bash
 zcloud storage cp <src path> cloud://<bucket-name>/<filename>
 ```
-Or, copy a file from s3:
+Or, copy a file from S3:
 ```bash
 zcloud storage cp cloud://<bucket-name>/<filename> <dest path>
 ```
 Basically, usage mirrors that of `aws s3 cp` and `gsutil cp`
 
-### Example Usage for GCLOUD
-Set the zCloud env var for gcloud:
+### Example Usage for Google Cloud (gcloud)
+Set the zCloud provider env var for gcloud:
 ```bash
 export ZCLOUD_PROV=GCLOUD
 ```
