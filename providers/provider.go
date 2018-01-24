@@ -48,6 +48,9 @@ func getStorageProvider() (storage.StorageProvider, error) {
 	if p, ok := storageProviders[prov]; ok {
 		return p, nil
 	}
+	if p, ok := providers[prov]; ok {
+		return p, nil
+	}
 	if p, err := getProvider(); err == nil {
 		return p, nil
 	}

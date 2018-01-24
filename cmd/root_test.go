@@ -1,4 +1,4 @@
-package aws
+package cmd
 
 import (
 	"testing"
@@ -6,11 +6,11 @@ import (
 
 func TestConvertURL (t *testing.T) {
 	url := "cloud://bucket/file.txt"
-	if res := convertURL(url); res != "s3://bucket/file.txt" {
+	if res := convertURL(url, "s3"); res != "s3://bucket/file.txt" {
 		t.Fatal(res)
 	}
 	url = "s3://bucket/dir/file.txt"
-	if res := convertURL(url); res != url {
+	if res := convertURL(url, "s3"); res != url {
 		t.Fatal(res)
 	}
 }
