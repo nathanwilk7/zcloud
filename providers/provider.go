@@ -37,6 +37,7 @@ func getProvider() (Provider, error) {
 var providers map[string]Provider = map[string]Provider {
 	"TEST": test_provider.TestProvider(),
 	"GCLOUD": gcloud.GCloudProvider(),
+	"AWS": aws.AwsProvider(),
 }
 
 func GetStorageProvider () (storage.StorageProvider, error) {
@@ -57,6 +58,4 @@ func getStorageProvider() (storage.StorageProvider, error) {
 	return nil, fmt.Errorf("%s and %s were not valid or were empty: %s, %s", ZCloudProvEnv, ZCloudStorageProvEnv, prov, os.Getenv(ZCloudProvEnv))
 }
 
-var storageProviders map[string]storage.StorageProvider = map[string]storage.StorageProvider {
-	"AWS": aws.AwsProvider(),
-}
+var storageProviders map[string]storage.StorageProvider = map[string]storage.StorageProvider {}
