@@ -34,15 +34,15 @@ zcloud storage cp cloud://<bucket-name>/<filename> <dest path>
 Basically, usage mirrors that of `aws s3 cp` and `gsutil cp`
 
 ### Example Usage for Google Cloud (gcloud)
-Set the zCloud provider env var for gcloud:
-```bash
-export ZCLOUD_PROV=GCLOUD
-```
-Currently, you need to use gcloud's cli authentication. [Here](https://cloud.google.com/sdk/downloads) are instructions on installation.
+Currently, you need to use gcloud's cli authentication. [Here](https://cloud.google.com/sdk/downloads#interactive) are instructions on installation. I recommend the Interactive Installer.
 
-To authenticate, run:
+Then, after installing and initializing, authenticate (you may need to install gcloud's beta command group and login via browser):
 ```bash
 gcloud beta auth application-default login
+```
+After you've authenticated gcloud, set the zCloud provider env var for gcloud:
+```bash
+export ZCLOUD_PROV=GCLOUD
 ```
 Then, copy a file to Google Cloud Storage:
 ```bash
