@@ -2,7 +2,9 @@ package aws
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/nathanwilk7/zcloud/storage"
@@ -14,27 +16,81 @@ import (
 )
 
 func (p awsProvider) Upload (params storage.UploadParams) (string, error) {
-	f, err  := os.Open(params.Src)
-	if err != nil {
-		return "", fmt.Errorf("failed to open file %s, %v", params.Src, err)
-	}
-	defer f.Close()
 	bucket, key, err := bucketKeyFromURL(params.Dest)
 	if err != nil {
 		return "", err
 	}
 	uploader := s3manager.NewUploader(p.Session)
-	result, err := uploader.Upload(
-		&s3manager.UploadInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(key),
-			Body:   f,
-		},
-	)
+	objects, err := getObjectsToUpload(params.Src, bucket, key, params.Recursive)
 	if err != nil {
-		return "", fmt.Errorf("failed to upload file, %v", err)
+		return "", err
 	}
-	return fmt.Sprintf("%s uploaded to %s", params.Src, aws.StringValue(&result.Location)), nil
+	if len(objects) == 0 {
+		return "", fmt.Errorf("No objects to upload were specified by source: %s", params.Src)
+	}
+	iter := &s3manager.UploadObjectsIterator{Objects: objects}
+	if err := uploader.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
+		return "", err
+	}
+	// TODO: how to close files?
+	return "files uploaded", nil
+}
+
+type readCloser struct {
+	io.Reader
+	io.Closer
+}
+
+func getObjectsToUpload(src, bucket, key string, recursive bool) ([]s3manager.BatchUploadObject, error) {
+	objects := []s3manager.BatchUploadObject{}
+	if !recursive {
+		f, err  := os.Open(src)
+		if err != nil {
+			return objects, fmt.Errorf("failed to open file %s, %v", src, err)
+		}
+		objects = append(objects, s3manager.BatchUploadObject{
+			Object: &s3manager.UploadInput{
+				Bucket: aws.String(bucket),
+				Key:    aws.String(key),
+				Body:   f,
+			},
+		})
+	} else {
+		err := filepath.Walk(src, func (path string, info os.FileInfo, err error) error {
+			if info.IsDir() {
+				return nil
+			}
+			f, err  := os.Open(path)
+			if err != nil {
+				return fmt.Errorf("failed to open file %s, %v", src, err)
+			}
+			relpath, err := filepath.Rel(src, path)
+			if err != nil {
+				return err
+			}
+			if relpath == "." {
+				relpath = filepath.Base(src)
+			}
+			var formattedKey string
+			if key == "" {
+				formattedKey = relpath
+			} else {
+				formattedKey = key + "/" + relpath
+			}
+			objects = append(objects, s3manager.BatchUploadObject{
+				Object: &s3manager.UploadInput{
+					Bucket: aws.String(bucket),
+					Key:    aws.String(formattedKey),
+					Body:   f,
+				},
+			})
+			return nil
+		})
+		if err != nil {
+			return objects, fmt.Errorf("error occured while walking directories: %v", err)
+		}
+	}
+	return objects, nil
 }
 
 func (p awsProvider) Download (params storage.DownloadParams) (string, error) {

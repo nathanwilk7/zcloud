@@ -18,3 +18,8 @@ if [[ $? != "0" ]]; then
 	echo "FAIL: did not list uploaded file"
 	exit 1
 fi
+./zcloud storage cp -r testdata/ cloud://zcloud-testing/
+if [[ $? != "0" ]]; then
+	echo "FAIL: did not upload recursively"
+	exit 1
+fi
