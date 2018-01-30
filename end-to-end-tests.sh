@@ -3,7 +3,9 @@ echo "natee!" > testdata/test.txt
 echo "aaaaaaa" > testdata/dir/a.txt
 mkdir testdata/recursive
 endtest () {
-	rm -rf testdata
+	if [[ $1 == 0]]; then
+		rm -rf testdata
+	fi
 	exit $1
 }
 ./zcloud storage cp testdata/test.txt cloud://zcloud-testing/zcloud-test.txt
