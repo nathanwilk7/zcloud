@@ -2,7 +2,6 @@ package aws
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,39 +20,49 @@ func (p awsProvider) Upload (params storage.UploadParams) (string, error) {
 		return "", err
 	}
 	uploader := s3manager.NewUploader(p.Session)
-	objects, err := getObjectsToUpload(params.Src, bucket, key, params.Recursive)
+	fbks, err := getObjectsToUpload(params.Src, bucket, key, params.Recursive)
 	if err != nil {
 		return "", err
 	}
-	if len(objects) == 0 {
+	if len(fbks) == 0 {
 		return "", fmt.Errorf("No objects to upload were specified by source: %s", params.Src)
+	}
+	objects := []s3manager.BatchUploadObject{}
+	for _, fbk := range fbks {
+		objects = append(objects, s3manager.BatchUploadObject{
+			Object: &s3manager.UploadInput{
+				Bucket: aws.String(fbk.Bucket),
+				Key:    aws.String(fbk.Key),
+				Body:   fbk.File,
+			},
+		})
 	}
 	iter := &s3manager.UploadObjectsIterator{Objects: objects}
 	if err := uploader.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
 		return "", err
 	}
-	// TODO: how to close files?
+	for _, fbk := range fbks {
+		fbk.File.Close()
+	}
 	return "files uploaded", nil
 }
 
-type readCloser struct {
-	io.Reader
-	io.Closer
+type FileBucketKey struct {
+	File *os.File
+	Bucket, Key string
 }
 
-func getObjectsToUpload(src, bucket, key string, recursive bool) ([]s3manager.BatchUploadObject, error) {
-	objects := []s3manager.BatchUploadObject{}
+func getObjectsToUpload(src, bucket, key string, recursive bool) ([]FileBucketKey, error) {
+	objects := []FileBucketKey{}
 	if !recursive {
 		f, err  := os.Open(src)
 		if err != nil {
 			return objects, fmt.Errorf("failed to open file %s, %v", src, err)
 		}
-		objects = append(objects, s3manager.BatchUploadObject{
-			Object: &s3manager.UploadInput{
-				Bucket: aws.String(bucket),
-				Key:    aws.String(key),
-				Body:   f,
-			},
+		objects = append(objects, FileBucketKey{
+			File: f,
+			Bucket: bucket,
+			Key: key,
 		})
 	} else {
 		err := filepath.Walk(src, func (path string, info os.FileInfo, err error) error {
@@ -64,6 +73,7 @@ func getObjectsToUpload(src, bucket, key string, recursive bool) ([]s3manager.Ba
 			if err != nil {
 				return fmt.Errorf("failed to open file %s, %v", src, err)
 			}
+			// TODO: does this work on windows?
 			relpath, err := filepath.Rel(src, path)
 			if err != nil {
 				return err
@@ -77,12 +87,10 @@ func getObjectsToUpload(src, bucket, key string, recursive bool) ([]s3manager.Ba
 			} else {
 				formattedKey = key + "/" + relpath
 			}
-			objects = append(objects, s3manager.BatchUploadObject{
-				Object: &s3manager.UploadInput{
-					Bucket: aws.String(bucket),
-					Key:    aws.String(formattedKey),
-					Body:   f,
-				},
+			objects = append(objects, FileBucketKey{
+				File: f,
+				Bucket: bucket,
+				Key: formattedKey,
 			})
 			return nil
 		})
@@ -94,26 +102,84 @@ func getObjectsToUpload(src, bucket, key string, recursive bool) ([]s3manager.Ba
 }
 
 func (p awsProvider) Download (params storage.DownloadParams) (string, error) {
+	svc := s3.New(p.Session)
 	downloader := s3manager.NewDownloader(p.Session)
-	
-	f, err := os.Create(params.Dest)
-	if err != nil {
-		return "", fmt.Errorf("failed to create file %q, %v", params.Dest, err)
-	}
-	defer f.Close()
-
 	bucket, key, err := bucketKeyFromURL(params.Src)
 	if err != nil {
 		return "", err
 	}
-	_, err = downloader.Download(f, &s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to download file %v", err)
+	fbks := []FileBucketKey{}
+	if !params.Recursive {
+		f, err := os.Create(params.Dest)
+		if err != nil {
+			return "", fmt.Errorf("failed to create file %q, %v", params.Dest, err)
+		}
+		defer f.Close()
+		
+		_, err = downloader.Download(f, &s3.GetObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+		})
+		if err != nil {
+			return "", fmt.Errorf("failed to download file %v", err)
+		}
+		return fmt.Sprintf("download: %s to %s", params.Src, params.Dest), nil
 	}
-	return fmt.Sprintf("download: %s to %s", params.Src, params.Dest), nil
+	input := &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(key),
+	}
+	result, err := svc.ListObjectsV2(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				return "", fmt.Errorf(s3.ErrCodeNoSuchBucket, aerr.Error())
+			default:
+				return "", aerr
+			}
+		} else {
+			return "", err
+		}
+		return "", err
+	}
+	for _, content := range result.Contents {
+		filename := params.Dest + *content.Key
+		if key != "" {
+			filename += strings.Replace(filename, key, "", 1)
+		}
+		os.MkdirAll(filepath.Dir(filename), os.ModePerm)
+		if *content.Size == 0 {
+			continue
+		}
+		f, err := os.Create(filename)
+		if err != nil {
+			return "", fmt.Errorf("failed to create file %q, %v", filename, err)
+		}
+		fbks = append(fbks, FileBucketKey {
+			Bucket: bucket,
+			Key: *content.Key,
+			File: f,
+		})
+	}
+	objects := []s3manager.BatchDownloadObject{}
+	for _, fbk := range fbks {
+		objects = append(objects, s3manager.BatchDownloadObject {
+			Object: &s3.GetObjectInput {
+				Bucket: aws.String(fbk.Bucket),
+				Key: aws.String(fbk.Key),
+			},
+			Writer: fbk.File,
+		})
+	}
+	iter := &s3manager.DownloadObjectsIterator{Objects: objects}
+	if err := downloader.DownloadWithIterator(aws.BackgroundContext(), iter); err != nil {
+		return "", err
+	}
+	for _, fbk := range fbks {
+		fbk.File.Close()
+	}
+	return fmt.Sprintf("downloaded files"), nil
 }
 
 func (p awsProvider) Ls (params storage.LsParams) (string, error) {
@@ -140,16 +206,21 @@ func (p awsProvider) Ls (params storage.LsParams) (string, error) {
 		}
 		return "", err
 	}
-	out := []string{}
+	out := map[string]interface{}{}
+	var empty interface{}
 	for _, content := range result.Contents {
 		key := *content.Key
-		if strings.Contains(key, "/") {
-			out = append(out, key[:strings.Index(key, "/") + 1])
+		if strings.Contains(key, "/") && !params.Recursive {
+			out[key[:strings.Index(key, "/") + 1]] = empty
 		} else {
-			out = append(out, key)
-		}
+			out[key] = empty
+		}		
 	}
-	return strings.Join(out, "\n"), nil
+	res := ""
+	for k := range out {
+		res += k + "\n"
+	}
+	return res, nil
 }
 
 func (p awsProvider) Rm (params storage.RmParams) (string, error) {

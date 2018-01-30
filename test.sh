@@ -5,9 +5,6 @@ ZCLOUD_PROV=TEST go test ./...
 chmod +x build.sh
 ./build.sh
 
-chmod +x end-to-end-tests.sh
-./end-to-end-tests.sh
-
 chmod +x providers/aws/end-to-end-tests.sh
 ./providers/aws/end-to-end-tests.sh
 
