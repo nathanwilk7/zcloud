@@ -1,10 +1,16 @@
 package test_provider
 
 import (
+	"fmt"
+	"os"
+	
 	"github.com/nathanwilk7/zcloud/storage"
 )
 
 func (p testProvider) Upload (params storage.UploadParams) (string, error) {
+	if _, err := os.Stat(params.Src); os.IsNotExist(err) {
+		return "", fmt.Errorf("Source file does not exist: %s", params.Src)
+	}
 	return "", nil
 }
 

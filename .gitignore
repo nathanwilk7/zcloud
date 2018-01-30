@@ -1,6 +1,7 @@
 *~
 secret.txt
-testdata/
+testdata/*
+!testdata/test.txt
 zcloud
 \#*#
 .\#*

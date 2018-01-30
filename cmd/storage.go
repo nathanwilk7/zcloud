@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"os"
 
-	"github.com/nathanwilk7/zcloud/providers"
 	"github.com/nathanwilk7/zcloud/storage"
 
 	"github.com/spf13/cobra"
@@ -25,7 +25,27 @@ func init () {
 
 	LsCmd.Flags().BoolVarP(&lsRecursive, "recursive", "r", false, "Recursively list")
 	StorageCmd.AddCommand(LsCmd)
+
+	RootCmd.AddCommand(StorageCmd)
 }
+
+const storageProvEnv = "ZCLOUD_STORAGE_PROV"
+
+func getStorageProvider (storageProvider string, provider string) (storage.StorageProvider, error) {
+	if p, ok := storageProviders[storageProvider]; ok {
+		return p, nil
+	}
+	if p, err := getProvider(storageProvider); err == nil {
+		return p, nil
+	}
+	if p, err := getProvider(provider); err == nil {
+		return p, nil
+	}
+	return nil, fmt.Errorf("%s and %s were not valid StorageProviders", storageProvider, provider)
+}
+
+var storageProviders map[string]storage.StorageProvider = map[string]storage.StorageProvider {}
+
 
 var CpCmd = &cobra.Command{
 	Use:   "cp",
@@ -36,7 +56,7 @@ var CpCmd = &cobra.Command{
 		src, dest := args[0], args[1]
 		var msg string
 		var err error
-		p := mustGetStorageProvider()
+		p := mustGetStorageProvider(os.Getenv(storageProvEnv), os.Getenv(provEnv))
 		replacement := p.StorageURLPrefixReplacement()
 		if isCloudURL(src) && !isCloudURL(dest) {
 			params := storage.NewDownloadParams(convertURL(src, replacement), dest)
@@ -66,7 +86,7 @@ var LsCmd = &cobra.Command{
 	Long:  "List objects stored in a provider",
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		p := mustGetStorageProvider()
+		p := mustGetStorageProvider(os.Getenv(storageProvEnv), os.Getenv(provEnv))
 		url := convertURL(args[0], p.StorageURLPrefixReplacement())
 		params := storage.NewLsParams(url)
 		params.Recursive = lsRecursive
@@ -78,8 +98,8 @@ var LsCmd = &cobra.Command{
 	},
 }
 
-func mustGetStorageProvider () storage.StorageProvider {
-	p, err := providers.GetStorageProvider()
+func mustGetStorageProvider (storageProvider string, provider string) storage.StorageProvider {
+	p, err := getStorageProvider(storageProvider, provider)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -23,11 +23,7 @@ func (p awsProvider) Upload (params storage.UploadParams) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	sess, err := getSession()
-	if err != nil {
-		return "", err
-	}
-	uploader := s3manager.NewUploader(sess)
+	uploader := s3manager.NewUploader(p.Session)
 	result, err := uploader.Upload(
 		&s3manager.UploadInput{
 			Bucket: aws.String(bucket),
@@ -42,11 +38,7 @@ func (p awsProvider) Upload (params storage.UploadParams) (string, error) {
 }
 
 func (p awsProvider) Download (params storage.DownloadParams) (string, error) {
-	sess, err := getSession()
-	if err != nil {
-		return "", err
-	}
-	downloader := s3manager.NewDownloader(sess)
+	downloader := s3manager.NewDownloader(p.Session)
 	
 	f, err := os.Create(params.Dest)
 	if err != nil {
@@ -69,11 +61,7 @@ func (p awsProvider) Download (params storage.DownloadParams) (string, error) {
 }
 
 func (p awsProvider) Ls (params storage.LsParams) (string, error) {
-	sess, err := getSession()
-	if err != nil {
-		return "", err
-	}
-	svc := s3.New(sess)
+	svc := s3.New(p.Session)
 	bucket, key, err := bucketKeyFromURL(params.Url)
 	if err != nil {
 		return "", err
