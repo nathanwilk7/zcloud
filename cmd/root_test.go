@@ -29,3 +29,14 @@ func TestIsCloudURL (t *testing.T) {
 		t.Fatal(url)
 	}
 }
+
+func TestGetProvider (t *testing.T) {
+	p, err := getProvider("TEST")
+	if err != nil || p == nil {
+		t.Fatal(err)
+	}
+	p, err = getProvider("ASDF")
+	if err == nil {
+		t.Fatal("ASDF should give an error when getting provider")
+	}
+}

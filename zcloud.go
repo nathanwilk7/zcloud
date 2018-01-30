@@ -5,7 +5,5 @@ import (
 )
 
 func main () {
-	rootCmd := cmd.RootCmd
-	rootCmd.AddCommand(cmd.StorageCmd)
-	rootCmd.Execute()
+	cmd.RootCmd.Execute()
 }

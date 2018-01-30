@@ -2,7 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
+
+	"github.com/nathanwilk7/zcloud/providers"
+	"github.com/nathanwilk7/zcloud/providers/aws"
+	"github.com/nathanwilk7/zcloud/providers/gcloud"
+	"github.com/nathanwilk7/zcloud/providers/test_provider"
 
 	"github.com/spf13/cobra"
 )
@@ -25,8 +31,35 @@ func writeOutput (msg string) {
 	}
 }
 
-const cloudStr = "cloud"
-const cloudURLPrefix = cloudStr + "://"
+const (
+	provEnv = "ZCLOUD_PROV"
+	awsIdEnv = "ZCLOUD_AWS_KEY_ID"
+	awsSecretEnv = "ZCLOUD_AWS_SECRET_KEY"
+	awsRegionEnv = "ZCLOUD_AWS_REGION"
+)
+
+func getProvider (provider string) (providers.Provider, error) {
+	if p, ok := providersMap[provider]; ok {
+		return p, nil
+	}
+	return nil, fmt.Errorf("%s was not a valid Provider", provider)
+}
+
+// TODO: Break out initialization of providers so that we only initialize the provider we're using. Also, do error checking.
+var providersMap map[string]providers.Provider = map[string]providers.Provider {
+	"TEST": test_provider.TestProvider(),
+	"GCLOUD": gcloud.GCloudProvider(),
+	"AWS": aws.AwsProvider(
+		os.Getenv(awsIdEnv),
+		os.Getenv(awsSecretEnv),
+		os.Getenv(awsRegionEnv),
+	),
+}
+
+const (
+	cloudStr = "cloud"
+	cloudURLPrefix = cloudStr + "://"
+)
 
 func convertURL (url, replacement string) string {
 	if isCloudURL(url) {
