@@ -10,8 +10,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/nathanwilk7/stringset"
 )
 
 func (p awsProvider) Upload (params storage.UploadParams) (string, error) {
@@ -19,26 +21,16 @@ func (p awsProvider) Upload (params storage.UploadParams) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	uploader := s3manager.NewUploader(p.Session)
-	fbks, err := getObjectsToUpload(params.Src, bucket, key, params.Recursive)
+	// hold onto the fbks because we'll need them to close the files after we upload
+	fbks, err := getFbksToUpload(params.Src, bucket, key, params.Recursive)
 	if err != nil {
 		return "", err
 	}
 	if len(fbks) == 0 {
 		return "", fmt.Errorf("No objects to upload were specified by source: %s", params.Src)
 	}
-	objects := []s3manager.BatchUploadObject{}
-	for _, fbk := range fbks {
-		objects = append(objects, s3manager.BatchUploadObject{
-			Object: &s3manager.UploadInput{
-				Bucket: aws.String(fbk.Bucket),
-				Key:    aws.String(fbk.Key),
-				Body:   fbk.File,
-			},
-		})
-	}
-	iter := &s3manager.UploadObjectsIterator{Objects: objects}
-	if err := uploader.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
+	err = uploadObjects(p.Session, fbks)
+	if err != nil {
 		return "", err
 	}
 	for _, fbk := range fbks {
@@ -52,53 +44,81 @@ type FileBucketKey struct {
 	Bucket, Key string
 }
 
-func getObjectsToUpload(src, bucket, key string, recursive bool) ([]FileBucketKey, error) {
-	objects := []FileBucketKey{}
+// TODO: test on empty dir
+func getFbksToUpload (src, bucket, key string, recursive bool) ([]FileBucketKey, error) {
+	fbks := []FileBucketKey{}
 	if !recursive {
-		f, err  := os.Open(src)
+		var err error
+		fbks, err = appendToFbks(fbks, src, bucket, key)
 		if err != nil {
-			return objects, fmt.Errorf("failed to open file %s, %v", src, err)
+			return fbks, err
 		}
-		objects = append(objects, FileBucketKey{
-			File: f,
-			Bucket: bucket,
-			Key: key,
-		})
 	} else {
 		err := filepath.Walk(src, func (path string, info os.FileInfo, err error) error {
 			if info.IsDir() {
 				return nil
 			}
-			f, err  := os.Open(path)
-			if err != nil {
-				return fmt.Errorf("failed to open file %s, %v", src, err)
-			}
-			// TODO: does this work on windows?
+			// get relative filepath to use as second half of key. This cuts off src from path because we're guaranteed that path contains
+			// src.
 			relpath, err := filepath.Rel(src, path)
 			if err != nil {
 				return err
 			}
+			// if relative filepath is just current dir, use the filename instead
 			if relpath == "." {
 				relpath = filepath.Base(src)
 			}
+			// if the key exists, prepend it to the relative path. This allows files to be uploaded into a directory on aws instead of
+			// only at the bucket level
 			var formattedKey string
 			if key == "" {
 				formattedKey = relpath
 			} else {
 				formattedKey = key + "/" + relpath
 			}
-			objects = append(objects, FileBucketKey{
-				File: f,
-				Bucket: bucket,
-				Key: formattedKey,
-			})
+			fbks, err = appendToFbks(fbks, path, bucket, formattedKey)
+			if err != nil {
+				return err
+			}
 			return nil
 		})
 		if err != nil {
-			return objects, fmt.Errorf("error occured while walking directories: %v", err)
+			return fbks, fmt.Errorf("error occured while walking directories: %v", err)
 		}
 	}
-	return objects, nil
+	return fbks, nil
+}
+
+func appendToFbks (fbks []FileBucketKey, filepath, bucket, key string) ([]FileBucketKey, error) {
+	f, err  := os.Open(filepath)
+	if err != nil {
+		return fbks, fmt.Errorf("failed to open file %s, %v", filepath, err)
+	}
+	fbks = append(fbks, FileBucketKey{
+		File: f,
+		Bucket: bucket,
+		Key: key,
+	})
+	return fbks, nil
+}
+
+func uploadObjects(sess *session.Session, fbks []FileBucketKey) error {
+	objects := []s3manager.BatchUploadObject{}
+	for _, fbk := range fbks {
+		objects = append(objects, s3manager.BatchUploadObject{
+			Object: &s3manager.UploadInput{
+				Bucket: aws.String(fbk.Bucket),
+				Key:    aws.String(fbk.Key),
+				Body:   fbk.File,
+			},
+		})
+	}
+	iter := &s3manager.UploadObjectsIterator{Objects: objects}
+	uploader := s3manager.NewUploader(sess)
+	if err := uploader.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (p awsProvider) Download (params storage.DownloadParams) (string, error) {
@@ -108,7 +128,6 @@ func (p awsProvider) Download (params storage.DownloadParams) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fbks := []FileBucketKey{}
 	if !params.Recursive {
 		f, err := os.Create(params.Dest)
 		if err != nil {
@@ -143,25 +162,48 @@ func (p awsProvider) Download (params storage.DownloadParams) (string, error) {
 		}
 		return "", err
 	}
+	fbks := []FileBucketKey{}
 	for _, content := range result.Contents {
+		// get local filename from dest and object key
 		filename := params.Dest + *content.Key
+		// if we're downloading from a cloud subdirectory, then remove it from the filepath so we don't create unnecessary subdirs
 		if key != "" {
 			filename += strings.Replace(filename, key, "", 1)
 		}
 		os.MkdirAll(filepath.Dir(filename), os.ModePerm)
+		// Don't create a file for directories (which have a Size of 0)
 		if *content.Size == 0 {
 			continue
 		}
-		f, err := os.Create(filename)
+		fbks, err = createAndAppendFbk (fbks, filename, bucket, *content.Key)
 		if err != nil {
-			return "", fmt.Errorf("failed to create file %q, %v", filename, err)
+			return "", err
 		}
-		fbks = append(fbks, FileBucketKey {
-			Bucket: bucket,
-			Key: *content.Key,
-			File: f,
-		})
 	}
+	err = downloadFbks(fbks, downloader)
+	if err != nil {
+		return "", err
+	}
+	for _, fbk := range fbks {
+		fbk.File.Close()
+	}
+	return fmt.Sprintf("downloaded files"), nil
+}
+
+func createAndAppendFbk (fbks []FileBucketKey, filename, bucket, key string) ([]FileBucketKey, error) {
+	f, err := os.Create(filename)
+	if err != nil {
+		return fbks, fmt.Errorf("failed to create file %q, %v", filename, err)
+	}
+	fbks = append(fbks, FileBucketKey {
+		Bucket: bucket,
+		Key: key,
+		File: f,
+	})
+	return fbks, nil
+}
+
+func downloadFbks (fbks []FileBucketKey, downloader* s3manager.Downloader) error {
 	objects := []s3manager.BatchDownloadObject{}
 	for _, fbk := range fbks {
 		objects = append(objects, s3manager.BatchDownloadObject {
@@ -174,12 +216,9 @@ func (p awsProvider) Download (params storage.DownloadParams) (string, error) {
 	}
 	iter := &s3manager.DownloadObjectsIterator{Objects: objects}
 	if err := downloader.DownloadWithIterator(aws.BackgroundContext(), iter); err != nil {
-		return "", err
+		return err
 	}
-	for _, fbk := range fbks {
-		fbk.File.Close()
-	}
-	return fmt.Sprintf("downloaded files"), nil
+	return nil
 }
 
 func (p awsProvider) Ls (params storage.LsParams) (string, error) {
@@ -206,20 +245,16 @@ func (p awsProvider) Ls (params storage.LsParams) (string, error) {
 		}
 		return "", err
 	}
-	out := map[string]interface{}{}
-	var empty interface{}
+	ss := stringset.NewStringset()
 	for _, content := range result.Contents {
 		key := *content.Key
 		if strings.Contains(key, "/") && !params.Recursive {
-			out[key[:strings.Index(key, "/") + 1]] = empty
+			ss.Add(key[:strings.Index(key, "/") + 1])
 		} else {
-			out[key] = empty
+			ss.Add(key)
 		}		
 	}
-	res := ""
-	for k := range out {
-		res += k + "\n"
-	}
+	res := strings.Join(ss.ToSlice(), "\n")
 	return res, nil
 }
 

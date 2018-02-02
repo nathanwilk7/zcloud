@@ -1,5 +1,7 @@
 set -e
 
+./clean.sh
+
 ZCLOUD_PROV=TEST go test ./...
 
 chmod +x build.sh
