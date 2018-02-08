@@ -7,7 +7,6 @@ ZCLOUD_AWS_REGION="us-east-1"
 
 echo "TESTING AWS"
 
-chmod +x providers/end-to-end-zcloud-test.sh
-providers/end-to-end-zcloud-test.sh
+./end-to-end-tests.sh
 
 echo "PASSED end-to-end testing with AWS"
