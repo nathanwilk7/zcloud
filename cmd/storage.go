@@ -1,12 +1,11 @@
 package cmd
 
 import (
-	"fmt"
-	"log"
 	"os"
 
-	"github.com/nathanwilk7/zcloud/storage"
-
+	"github.com/nathanwilk7/zcloud/controller"
+	"github.com/nathanwilk7/zcloud/out"
+	
 	"github.com/spf13/cobra"
 )
 
@@ -22,61 +21,45 @@ var lsRecursive bool
 func init () {
 	CpCmd.Flags().BoolVarP(&cpRecursive, "recursive", "r", false, "Recursively copy from src")
 	StorageCmd.AddCommand(CpCmd)
-
+	
 	LsCmd.Flags().BoolVarP(&lsRecursive, "recursive", "r", false, "Recursively list")
 	StorageCmd.AddCommand(LsCmd)
-
+	
 	RootCmd.AddCommand(StorageCmd)
 }
 
 const storageProvEnv = "ZCLOUD_STORAGE_PROV"
+var storageProv = os.Getenv(storageProvEnv)
 
-func getStorageProvider (storageProvider string, provider string) (storage.StorageProvider, error) {
-	if p, ok := storageProviders[storageProvider]; ok {
-		return p, nil
+func getProvParamsFromEnv () controller.ProvParams {
+	return controller.ProvParams{
+		Name: getStorageProv(storageProv, prov),
+		AwsId: awsId,
+		AwsSecret: awsSecret,
+		AwsRegion: awsRegion,
 	}
-	if p, err := getProvider(storageProvider); err == nil {
-		return p, nil
-	}
-	if p, err := getProvider(provider); err == nil {
-		return p, nil
-	}
-	return nil, fmt.Errorf("%s and %s were not valid StorageProviders", storageProvider, provider)
 }
 
-var storageProviders map[string]storage.StorageProvider = map[string]storage.StorageProvider {}
-
+func getStorageProv (storageProv, prov string) string {
+	if storageProv != "" {
+		return storageProv
+	}
+	return prov
+}
 
 var CpCmd = &cobra.Command{
 	Use:   "cp",
 	Short: "Copy objects",
 	Long:  "Copy objects to/from a provider",
 	Args: cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
-		src, dest := args[0], args[1]
-		var msg string
-		var err error
-		p := mustGetStorageProvider(os.Getenv(storageProvEnv), os.Getenv(provEnv))
-		replacement := p.StorageURLPrefixReplacement()
-		if isCloudURL(src) && !isCloudURL(dest) {
-			params := storage.NewDownloadParams(convertURL(src, replacement), dest)
-			params.Recursive = cpRecursive
-			msg, err = p.Download(params)
-		} else if !isCloudURL(src) && isCloudURL(dest) {
-			params := storage.NewUploadParams(src, convertURL(dest, replacement))
-			params.Recursive = cpRecursive
-			msg, err = p.Upload(params)
-		} else {
-			msg, err = "", fmt.Errorf(
-				"Exactly one of the source and destination url's must be a cloud url with the format cloud://...: %s, %s",
-				src,
-				dest,
-			)
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		cp := controller.CpParams{
+			Src: args[0],
+			Dest: args[1],
+			Recursive: cpRecursive,
 		}
-		if err != nil {
-			log.Fatal(msg, err)
-		}
-		writeOutput(msg)
+		controller.Cp(pp, cp, out.New())
 	},
 }
 
@@ -85,23 +68,12 @@ var LsCmd = &cobra.Command{
 	Short: "List objects",
 	Long:  "List objects stored in a provider",
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		p := mustGetStorageProvider(os.Getenv(storageProvEnv), os.Getenv(provEnv))
-		url := convertURL(args[0], p.StorageURLPrefixReplacement())
-		params := storage.NewLsParams(url)
-		params.Recursive = lsRecursive
-		msg, err := p.Ls(params)
-		if err != nil {
-			log.Fatal(msg, err)
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		lp := controller.LsParams{
+			Url: args[0],
+			Recursive: lsRecursive,
 		}
-		writeOutput(msg)
+		controller.Ls(pp, lp, out.New())
 	},
-}
-
-func mustGetStorageProvider (storageProvider string, provider string) storage.StorageProvider {
-	p, err := getStorageProvider(storageProvider, provider)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return p
 }
