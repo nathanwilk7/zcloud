@@ -42,14 +42,7 @@ func getURLFilename (a string, b string) (string, string, error) {
 }
 
 func Cp (pp ProvParams, cp CpParams, o out.Out) {
-	zpp := z.ProviderParams{
-		Name: pp.Name,
-		AwsId: pp.AwsId,
-		AwsSecret: pp.AwsSecret,
-		AwsRegion: pp.AwsRegion,
-		GCloudProjectID: pp.GCloudProjectID,
-	}
-	p, err := z.NewProvider(zpp)
+	p, err := z.NewProvider(zppFromPp(pp))
 	if err != nil {
 		o.Fatal(err)
 	}
@@ -88,14 +81,7 @@ type LsParams struct {
 }
 
 func Ls (pp ProvParams, ls LsParams, o out.Out) {
-	zpp := z.ProviderParams{
-		Name: pp.Name,
-		AwsId: pp.AwsId,
-		AwsSecret: pp.AwsSecret,
-		AwsRegion: pp.AwsRegion,
-		GCloudProjectID: pp.GCloudProjectID,
-	}
-	p, err := z.NewProvider(zpp)
+	p, err := z.NewProvider(zppFromPp(pp))
 	if err != nil {
 		o.Fatal(err)
 	}
@@ -118,6 +104,16 @@ func Ls (pp ProvParams, ls LsParams, o out.Out) {
 		fis[i].Name = os[i].Key()
 	}
 	o.ListFileInfos(fis)
+}
+
+func zppFromPp (pp ProvParams) z.ProviderParams {
+	return z.ProviderParams{
+		Name: pp.Name,
+		AwsId: pp.AwsId,
+		AwsSecret: pp.AwsSecret,
+		AwsRegion: pp.AwsRegion,
+		GCloudProjectID: pp.GCloudProjectID,
+	}
 }
 
 const (
