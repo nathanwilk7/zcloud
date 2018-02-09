@@ -8,6 +8,8 @@ import (
 	
 	"github.com/nathanwilk7/zcloud/out"
 	z "github.com/nathanwilk7/zcloud-go"
+
+	"github.com/nathanwilk7/zcloud/stringset"
 )
 		
 
@@ -20,25 +22,6 @@ type ProvParams struct {
 type CpParams struct {
 	Src, Dest string
 	Recursive bool
-}
-
-func getURLFilename (a string, b string) (string, string, error) {
-	var url, filename string
-	if isCloudURL(a) && !isCloudURL(b) {
-		url = a
-		filename = b
-	} else if !isCloudURL(a) && isCloudURL(b) {
-		filename = a
-		url = b
-	} else {
-		err := fmt.Errorf(
-			"Exactly one of the source and cpdDestination url's must be a cloud url with the format cloud://...: %s, %s",
-			a,
-			b,
-		)
-		return "", "", err
-	}
-	return url, filename, nil
 }
 
 func Cp (pp ProvParams, cp CpParams, o out.Out) {
@@ -75,6 +58,25 @@ func Cp (pp ProvParams, cp CpParams, o out.Out) {
 	o.Messagef("Successfully copied %v to %v\n", cp.Src, cp.Dest)
 }
 
+func getURLFilename (a string, b string) (string, string, error) {
+	var url, filename string
+	if isCloudURL(a) && !isCloudURL(b) {
+		url = a
+		filename = b
+	} else if !isCloudURL(a) && isCloudURL(b) {
+		filename = a
+		url = b
+	} else {
+		err := fmt.Errorf(
+			"Exactly one of the source and cpdDestination url's must be a cloud url with the format cloud://...: %s, %s",
+			a,
+			b,
+		)
+		return "", "", err
+	}
+	return url, filename, nil
+}
+
 type LsParams struct {
 	Url string
 	Recursive bool
@@ -99,11 +101,23 @@ func Ls (pp ProvParams, ls LsParams, o out.Out) {
 	if err != nil {
 		o.Fatal(err)
 	}
-	fis := make([]out.FileInfo, len(os))
-	for i := range os {
-		fis[i].Name = os[i].Key()
+	ss := stringset.New()
+	if ls.Recursive {
+		for i := range os {
+			ss.Add(os.Name())
+		}
+	} else {
+		for i := range os {
+			
+		}
 	}
+	fis[i].Name = os[i].Key()
+	fis := make([]out.FileInfo, len(os))
 	o.ListFileInfos(fis)
+}
+
+func baseNameOrDir (filename, key string) {
+	
 }
 
 func zppFromPp (pp ProvParams) z.ProviderParams {
