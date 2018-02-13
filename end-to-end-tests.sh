@@ -7,7 +7,7 @@ ZCLOUD_AWS_REGION="us-east-1"
 
 echo "TESTING AWS"
 
-./end-to-end-tests.sh
+./end-to-end-test.sh
 
 echo "PASSED end-to-end testing with AWS"
 
@@ -16,6 +16,6 @@ ZCLOUD_GCLOUD_PROJECT="zcloud-testing"
 
 echo "TESTING GCLOUD"
 
-./end-to-end-tests.sh
+./end-to-end-test.sh
 
 echo "PASSED end-to-end testing with GCLOUD"
