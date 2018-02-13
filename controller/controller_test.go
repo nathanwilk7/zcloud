@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBaseNameOrDir (t *testing.T) {
+func TestFirstPathEl (t *testing.T) {
 	k := "a.txt"
 	p := ""
 	s := firstPathEl(k, p)
