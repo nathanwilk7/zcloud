@@ -17,6 +17,7 @@ var StorageCmd = &cobra.Command{
 
 var cpRecursive bool
 var lsRecursive bool
+var rmRecursive bool
 
 func init () {
 	CpCmd.Flags().BoolVarP(&cpRecursive, "recursive", "r", false, "Recursively copy from src")
@@ -24,6 +25,9 @@ func init () {
 	
 	LsCmd.Flags().BoolVarP(&lsRecursive, "recursive", "r", false, "Recursively list")
 	StorageCmd.AddCommand(LsCmd)
+
+	RmCmd.Flags().BoolVarP(&rmRecursive, "recursive", "r", false, "Recursively remove")
+	StorageCmd.AddCommand(RmCmd)
 	
 	RootCmd.AddCommand(StorageCmd)
 }
@@ -75,5 +79,20 @@ var LsCmd = &cobra.Command{
 			Recursive: lsRecursive,
 		}
 		controller.Ls(pp, lp, out.New())
+	},
+}
+
+var RmCmd = &cobra.Command{
+	Use:   "rm",
+	Short: "Remove objects",
+	Long:  "Remove objects stored in a provider",
+	Args: cobra.ExactArgs(1),
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		rp := controller.RmParams{
+			Url: args[0],
+			Recursive: rmRecursive,
+		}
+		controller.Rm(pp, rp, out.New())
 	},
 }

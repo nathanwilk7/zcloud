@@ -285,6 +285,47 @@ func maybeAppendSlash (s string) string {
 	return s
 }
 
+type RmParams struct {
+	Url string
+	Recursive bool
+}
+
+func Rm (pp ProvParams, rp RmParams, o out.Out) {
+	p, err := z.NewProvider(zppFromPp(pp))
+	if err != nil {
+		o.Fatal(err)
+	}
+	if !isCloudURL(rp.Url) {
+		o.Fatalf("%v is not a valid zCloud URL", rp.Url)
+	}
+	bn, k, err := bucketNameKey(rp.Url)
+	if err != nil {
+		o.Fatal(err)
+	}
+	q := &z.ObjectsQueryParams{
+		Prefix: k,
+	}
+	objects, err := p.Bucket(bn).ObjectsQuery(q)
+	if err != nil {
+		o.Fatal(err)
+	}
+	if rp.Recursive {
+		for i := range objects {
+			err = objects[i].Delete()
+			if err != nil {
+				o.Fatal(err)
+			}
+		}
+		o.Messagef("%v objects were deleted from %v\n", len(objects), rp.Url)
+	} else {
+		if len(objects) != 1 {
+			o.Fatalf("Object doesn't exist or more than one object was returned: %v", rp.Url)
+		}
+		objects[0].Delete()
+		o.Messagef("%v was deleted\n", rp.Url)
+	}
+}
+
 func zppFromPp (pp ProvParams) z.ProviderParams {
 	return z.ProviderParams{
 		Name: pp.Name,
