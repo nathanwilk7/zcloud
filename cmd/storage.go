@@ -15,9 +15,12 @@ var StorageCmd = &cobra.Command{
 	Long:  "Perform various operations related to blob storage",
 }
 
-var cpRecursive bool
-var lsRecursive bool
-var rmRecursive bool
+var (
+	cpRecursive bool
+	lsRecursive bool
+	rmRecursive bool
+)
+
 
 func init () {
 	CpCmd.Flags().BoolVarP(&cpRecursive, "recursive", "r", false, "Recursively copy from src")
@@ -96,3 +99,19 @@ var RmCmd = &cobra.Command{
 		controller.Rm(pp, rp, out.New())
 	},
 }
+
+var SyncCmd = &cobra.Command{
+	Use:   "sync",
+	Short: "Sync objects",
+	Long:  "Sync objects from a source to a destination",
+	Args: cobra.ExactArgs(2),
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		sp := controller.SyncParams{
+			Src: args[0],
+			Dest: args[1],
+		}
+		controller.Sync(pp, sp, out.New())
+	},
+}
+

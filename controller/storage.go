@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 	
 	"github.com/nathanwilk7/zcloud/out"
 	z "github.com/nathanwilk7/zcloud-go"
@@ -66,10 +67,10 @@ func Download (p z.Provider, b z.Bucket, fp, key string, recursive bool) (int, e
 		fps = []string{fp}
 		keys = []string{key}
 	} else {
-		oqp := z.ObjectsQueryParams{
+		oqp := &z.ObjectsQueryParams{
 			Prefix: key,
 		}
-		objects, err := b.ObjectsQuery(&oqp)
+		objects, err := b.ObjectsQuery(oqp)
 		if err != nil {
 			return 0, err
 		}
@@ -77,37 +78,58 @@ func Download (p z.Provider, b z.Bucket, fp, key string, recursive bool) (int, e
 		fps = fpsFromFilepathKeys(fp, keys)
 	}
 	for i := range fps {
-		d := filepath.Dir(fps[i])
-		err := os.MkdirAll(d, os.ModePerm)
+		err := downloadFile(b, keys[i], fps[i], false)
 		if err != nil {
-			return 0, err
-		}
-		f, err := os.Create(fps[i])
-		if err != nil {
-			return 0, err
-		}
-		r, err := b.Object(keys[i]).Reader()
-		if err != nil {
-			f.Close()
-			return 0, err
-		}
-		_, err = io.Copy(f, r)
-		if err != nil {
-			r.Close()
-			f.Close()
-			return 0, err
-		}
-		err = r.Close()
-		if err != nil {
-			f.Close()
-			return 0, err
-		}
-		err = f.Close()
-		if err != nil {
-			return 0, err
+			return i, err
 		}
 	}
 	return len(fps), nil
+}
+
+func downloadFile (b z.Bucket, k, fpath string, deltaTransfer bool) error {
+	d := filepath.Dir(fpath)
+	err := os.MkdirAll(d, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	f, err := os.Create(fpath)
+	if err != nil {
+		return err
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	o := b.Object(k)
+	oi, err := o.Info()
+	if err != nil {
+		return err
+	}
+	if deltaTransfer &&
+		!shouldReplace(oi.Size(), int(fi.Size()), oi.LastModified(), fi.ModTime()) {
+		return nil
+	}
+	r, err := o.Reader()
+	if err != nil {
+		f.Close()
+		return err
+	}
+	_, err = io.Copy(f, r)
+	if err != nil {
+		r.Close()
+		f.Close()
+		return err
+	}
+	err = r.Close()
+	if err != nil {
+		f.Close()
+		return err
+	}
+	err = f.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func keysFromObjects (objects []z.Object) []string {
@@ -137,35 +159,56 @@ func Upload (p z.Provider, b z.Bucket, fp, key string, recursive bool) (int, err
 		keys = keysFromFilepaths(fps, fp, key)
 	}
 	for i := range fps {
-		f, err := os.Open(fps[i])
+		err := uploadFile(fps[i], b, keys[i], false)
 		if err != nil {
-			return 0, err
-		}
-		w, err := b.Object(keys[i]).Writer()
-		if err != nil {
-			f.Close()
-			return 0, err
-		}
-		_, err = io.Copy(w, f)
-		if err != nil {
-			w.Close()
-			f.Close()
-			return 0, err
-		}
-		err = w.Close()
-		if err != nil {
-			f.Close()
-			return 0, err
-		}
-		err = f.Close()
-		if err != nil {
-			return 0, err
+			return i, err
 		}
 	}
 	return len(fps), nil
 }
 
-func keysFromFilepaths(fps []string, fileprefix, urlprefix string) []string {
+func uploadFile (path string, b z.Bucket, k string, deltaTransfer bool) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	o := b.Object(k)
+	oi, err := o.Info()
+	if err != nil {
+		return err
+	}
+	if deltaTransfer &&
+		!shouldReplace(int(fi.Size()), oi.Size(), fi.ModTime(), oi.LastModified()) {
+		return nil
+	}
+	w, err := o.Writer()
+	if err != nil {
+		f.Close()
+		return err
+	}
+	_, err = io.Copy(w, f)
+	if err != nil {
+		w.Close()
+		f.Close()
+		return err
+	}
+	err = w.Close()
+	if err != nil {
+		f.Close()
+		return err
+	}
+	err = f.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func keysFromFilepaths (fps []string, fileprefix, urlprefix string) []string {
 	keys := make([]string, len(fps))
 	for i := range fps {
 		keys[i] = keyFromFilepath(fps[i], fileprefix, urlprefix)
@@ -184,6 +227,7 @@ func keyFromFilepath (fp, fileprefix, urlprefix string) string {
 	if len(urlprefix) == 0 {
 		return fp
 	}
+	// TODO: Why is this here?
 	if urlprefix[len(urlprefix) - 1] == '/' {
 		urlprefix += "/"
 	}
@@ -194,6 +238,9 @@ func keyFromFilepath (fp, fileprefix, urlprefix string) string {
 func recursiveFilepaths (fp string) []string {
 	fps := []string{}
 	filepath.Walk(fp, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if !info.IsDir() {
 			fps = append(fps, path)
 		}
@@ -324,6 +371,112 @@ func Rm (pp ProvParams, rp RmParams, o out.Out) {
 		objects[0].Delete()
 		o.Messagef("%v was deleted\n", rp.Url)
 	}
+}
+
+type SyncParams struct {
+	Src, Dest string
+}
+
+func Sync (pp ProvParams, sp SyncParams, o out.Out) {
+	p, err := z.NewProvider(zppFromPp(pp))
+	if err != nil {
+		o.Fatal(err)
+	}
+	var sbn, sk, dbn, dk string
+	if isCloudURL(sp.Src) {
+		sbn, sk, err = bucketNameKey(sp.Src)
+		if err != nil {
+			o.Fatal(err)
+		}
+	}
+	if isCloudURL(sp.Dest) {
+		dbn, dk, err = bucketNameKey(sp.Dest)
+		if err != nil {
+			o.Fatal(err)
+		}
+	}
+	if isCloudURL(sp.Src) && isCloudURL(sp.Dest) {
+		err = syncCloudToCloud(p, sbn, sk, dbn, dk)
+	} else if !isCloudURL(sp.Src) && isCloudURL(sp.Dest) {
+		err = syncLocalToCloud(p, sp.Src, dbn, dk)
+	} else if isCloudURL(sp.Src) && !isCloudURL(sp.Dest) {
+		err = syncCloudToLocal(p, sbn, sk, sp.Dest)
+	} else {
+		o.Fatalf("Src or dest must be a cloud url, src: %v, dest: %v", sp.Src, sp.Dest)
+	}
+	if err != nil {
+		o.Fatal(err)
+	}
+}
+
+func syncCloudToCloud (p z.Provider, sbn, sk, dbn, dk string) error {
+	soq := &z.ObjectsQueryParams{
+		Prefix: sk,
+	}
+	sos, err := p.Bucket(sbn).ObjectsQuery(soq)
+	if err != nil {
+		return err
+	}
+	db := p.Bucket(dbn)
+	for _, so := range sos {
+		dk := dk + strings.Replace(so.Key(), sk, "", 1)
+		do := db.Object(dk)
+		soi, err := so.Info()
+		if err != nil {
+			return err
+		}
+		doi, err := do.Info()
+		if err == nil &&
+			!shouldReplace(soi.Size(), doi.Size(), soi.LastModified(), doi.LastModified()) {
+			continue
+		}
+		err = so.CopyTo(do)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func syncLocalToCloud (p z.Provider, fileprefix, dbn, dk string) error {
+	db := p.Bucket(dbn)
+	return filepath.Walk(fileprefix, func (path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			newKey := keyFromFilepath(path, fileprefix, dk)
+			err = uploadFile(path, db, newKey, true)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func syncCloudToLocal (p z.Provider, bn, k, fileprefix string) error {
+	oq := &z.ObjectsQueryParams{
+		Prefix: k,
+	}
+	b := p.Bucket(bn)
+	obs, err := b.ObjectsQuery(oq)
+	if err != nil {
+		return err
+	}
+	for _, o := range obs {
+		filepath := fileprefix + strings.Replace(o.Key(), k, "", 1)
+		err = downloadFile(b, o.Key(), filepath, true)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func shouldReplace (ss, ds int, slm, dlm time.Time) bool {
+	return ss != ds ||
+		dlm.Before(slm)
 }
 
 func zppFromPp (pp ProvParams) z.ProviderParams {
