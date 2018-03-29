@@ -40,7 +40,7 @@ func init () {
 const storageProvEnv = "ZCLOUD_STORAGE_PROV"
 var storageProv = os.Getenv(storageProvEnv)
 
-func GetProvParamsFromEnv () controller.ProvParams {
+func getProvParamsFromEnv () controller.ProvParams {
 	return controller.ProvParams{
 		Name: getStorageProv(storageProv, prov),
 		AwsId: awsId,
@@ -62,7 +62,7 @@ var CpCmd = &cobra.Command{
 	Long:  "Copy objects to/from a provider",
 	Args: cobra.ExactArgs(2),
 	Run: func (cmd *cobra.Command, args []string) {
-		pp := GetProvParamsFromEnv()
+		pp := getProvParamsFromEnv()
 		cp := controller.CpParams{
 			Src: args[0],
 			Dest: args[1],
@@ -78,7 +78,7 @@ var LsCmd = &cobra.Command{
 	Long:  "List objects stored in a provider",
 	Args: cobra.ExactArgs(1),
 	Run: func (cmd *cobra.Command, args []string) {
-		pp := GetProvParamsFromEnv()
+		pp := getProvParamsFromEnv()
 		lp := controller.LsParams{
 			Url: args[0],
 			Recursive: lsRecursive,
@@ -93,7 +93,7 @@ var RmCmd = &cobra.Command{
 	Long:  "Remove objects stored in a provider",
 	Args: cobra.ExactArgs(1),
 	Run: func (cmd *cobra.Command, args []string) {
-		pp := GetProvParamsFromEnv()
+		pp := getProvParamsFromEnv()
 		rp := controller.RmParams{
 			Url: args[0],
 			Recursive: rmRecursive,
@@ -108,7 +108,7 @@ var SyncCmd = &cobra.Command{
 	Long:  "Sync objects from a source to a destination",
 	Args: cobra.ExactArgs(2),
 	Run: func (cmd *cobra.Command, args []string) {
-		pp := GetProvParamsFromEnv()
+		pp := getProvParamsFromEnv()
 		sp := controller.SyncParams{
 			Src: args[0],
 			Dest: args[1],
