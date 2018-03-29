@@ -178,12 +178,21 @@ func uploadFile (path string, b z.Bucket, k string, deltaTransfer bool) error {
 	}
 	o := b.Object(k)
 	oi, err := o.Info()
-	if err != nil {
+	// don't return err if the object doesn't exist
+	switch err.(type) {
+	case z.ErrObjectDoesNotExist:
+		// placeholder text
+	default:
 		return err
 	}
-	if deltaTransfer &&
-		!shouldReplace(int(fi.Size()), oi.Size(), fi.ModTime(), oi.LastModified()) {
-		return nil
+	switch err.(type) {
+	case z.ErrObjectDoesNotExist:
+		// placeholder text
+	default:
+		if deltaTransfer &&
+			!shouldReplace(int(fi.Size()), oi.Size(), fi.ModTime(), oi.LastModified()) {
+			return nil
+		}
 	}
 	w, err := o.Writer()
 	if err != nil {
@@ -231,7 +240,7 @@ func keyFromFilepath (fp, fileprefix, urlprefix string) string {
 	if urlprefix[len(urlprefix) - 1] == '/' {
 		urlprefix += "/"
 	}
-	urlprefix = maybeAppendSlash(urlprefix)
+	urlprefix = ensureTrailingSlash(urlprefix)
 	return fmt.Sprintf("%s%s", urlprefix, fp)
 }
 
@@ -312,7 +321,7 @@ func Ls (pp ProvParams, ls LsParams, o out.Out) {
 
 func firstPathEl (key, prefix string) string {
 	if len(prefix) != 0 {
-		prefix = maybeAppendSlash(prefix)
+		prefix = ensureTrailingSlash(prefix)
 	}
 	postfix := strings.Replace(key, prefix, "", 1)
 	i := strings.Index(postfix, "/")
@@ -322,7 +331,7 @@ func firstPathEl (key, prefix string) string {
 	return postfix
 }
 
-func maybeAppendSlash (s string) string {
+func ensureTrailingSlash (s string) string {
 	if len(s) == 0 {
 		return "/"
 	}
@@ -330,6 +339,21 @@ func maybeAppendSlash (s string) string {
 		s += "/"
 	}
 	return s
+}
+
+func ensureTrailingSlashIfDir (filepath string) (string, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return filepath, err
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		return filepath, err
+	}
+	if fi.IsDir() {
+		filepath = ensureTrailingSlash(filepath)
+	}
+	return filepath, nil
 }
 
 type RmParams struct {
@@ -440,6 +464,10 @@ func syncCloudToCloud (p z.Provider, sbn, sk, dbn, dk string) error {
 
 func syncLocalToCloud (p z.Provider, fileprefix, dbn, dk string) error {
 	db := p.Bucket(dbn)
+	fileprefix, err := ensureTrailingSlashIfDir(fileprefix)
+	if err != nil {
+		return err
+	}
 	return filepath.Walk(fileprefix, func (path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -461,6 +489,10 @@ func syncCloudToLocal (p z.Provider, bn, k, fileprefix string) error {
 	}
 	b := p.Bucket(bn)
 	obs, err := b.ObjectsQuery(oq)
+	if err != nil {
+		return err
+	}
+	fileprefix, err = ensureTrailingSlashIfDir(fileprefix)
 	if err != nil {
 		return err
 	}

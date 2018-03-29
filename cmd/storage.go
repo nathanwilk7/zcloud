@@ -31,6 +31,8 @@ func init () {
 
 	RmCmd.Flags().BoolVarP(&rmRecursive, "recursive", "r", false, "Recursively remove")
 	StorageCmd.AddCommand(RmCmd)
+
+	StorageCmd.AddCommand(SyncCmd)
 	
 	RootCmd.AddCommand(StorageCmd)
 }
