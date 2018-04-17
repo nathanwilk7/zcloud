@@ -137,3 +137,31 @@ var TransferCmd = &cobra.Command{
 		controller.Transfer(pp, tp, out.New())
 	},
 }
+
+var MakeBucketCmd = &cobra.Command{
+	Use: "mb",
+	Short: "Make bucket",
+	Long: "Create a new bucket",
+	Args: cobra.ExactArgs(1),
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		mbp := controller.MakeBucketParams{
+			Name: args[0],
+		}
+		controller.MakeBucket(pp, mbp, out.New())
+	},
+}
+
+var RemoveBucketCmd = &cobra.Command{
+	Use: "rb",
+	Short: "Remove bucket",
+	Long: "Delete a bucket",
+	Args: cobra.ExactArgs(1),
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		rbp := controller.RemoveBucketParams{
+			Name: args[0],
+		}
+		controller.RemoveBucket(pp, rbp, out.New())
+	},
+}

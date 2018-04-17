@@ -566,6 +566,30 @@ func Transfer (pp ProvParams, tp TransferParams, o out.Out) {
 	o.Messagef("Transferred %v files from %v to %v\n", len(sos), srcProv, tp.DestProv)
 }
 
+type MakeBucketParams struct {
+	Name string
+}
+
+func MakeBucket (pp ProvParams, mbp MakeBucketParams, o out.Out) {
+	p, err := z.NewProvider(zppFromPp(pp))
+	err = p.Bucket(mbp.Name).Create()
+	if err != nil {
+		o.Fatal(err)
+	}
+}
+
+type RemoveBucketParams struct {
+	Name string
+}
+
+func RemoveBucket (pp ProvParams, rbp RemoveBucketParams, o out.Out) {
+	p, err := z.NewProvider(zppFromPp(pp))
+	err = p.Bucket(rbp.Name).Delete()
+	if err != nil {
+		o.Fatal(err)
+	}
+}
+
 func shouldReplace (ss, ds int, slm, dlm time.Time) bool {
 	return ss != ds ||
 		dlm.Before(slm)
