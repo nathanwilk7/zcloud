@@ -19,6 +19,7 @@ var (
 	cpRecursive bool
 	lsRecursive bool
 	rmRecursive bool
+	transferRecursive bool
 )
 
 
@@ -34,6 +35,7 @@ func init () {
 
 	StorageCmd.AddCommand(SyncCmd)
 
+	TransferCmd.Flags().BoolVarP(&transferRecursive, "recursive", "r", false, "Recursively transfer")
 	StorageCmd.AddCommand(TransferCmd)
 	
 	RootCmd.AddCommand(StorageCmd)
@@ -130,6 +132,7 @@ var TransferCmd = &cobra.Command{
 			Src: args[0],
 			Dest: args[1],
 			DestProv: destProv,
+			Recursive: transferRecursive,
 		}
 		controller.Transfer(pp, tp, out.New())
 	},

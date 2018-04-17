@@ -509,6 +509,7 @@ func syncCloudToLocal (p z.Provider, bn, k, fileprefix string) error {
 type TransferParams struct {
 	Src, Dest string
 	DestProv string
+	Recursive bool
 }
 
 func Transfer (pp ProvParams, tp TransferParams, o out.Out) {
@@ -524,13 +525,19 @@ func Transfer (pp ProvParams, tp TransferParams, o out.Out) {
 	if err != nil {
 		o.Fatal(err)
 	}
-	oqp := &z.ObjectsQueryParams{
-		Prefix: sk,
-	}
 	sb := sp.Bucket(sbn)
-	sos, err := sb.ObjectsQuery(oqp)
-	if err != nil {
-		o.Fatal(err)
+	var sos []z.Object
+	if tp.Recursive || sk == "" {
+		oqp := &z.ObjectsQueryParams{
+			Prefix: sk,
+		}
+		sos, err = sb.ObjectsQuery(oqp)
+		if err != nil {
+			o.Fatal(err)
+		}
+	} else {
+		so := sb.Object(sk)
+		sos = []z.Object{so}
 	}
 	db := dp.Bucket(dbn)
 	for _, so := range sos {
@@ -556,7 +563,7 @@ func Transfer (pp ProvParams, tp TransferParams, o out.Out) {
 			o.Fatal(err)
 		}
 	}
-	o.Messagef("Transferred %d files from %s to %s", len(sos), srcProv, tp.DestProv)
+	o.Messagef("Transferred %v files from %v to %v\n", len(sos), srcProv, tp.DestProv)
 }
 
 func shouldReplace (ss, ds int, slm, dlm time.Time) bool {
