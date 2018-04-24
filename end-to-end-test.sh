@@ -32,6 +32,16 @@ if [[ $? != "0" ]]; then
 	echo "FAIL: did not list uploaded file"
 	endTest 1
 fi
+./zcloud storage rm cloud://zcloud-testing/zcloud-test.txt
+if [[ $? != "0" ]]; then
+	echo "FAIL: remove failed"
+	endTest 1
+fi
+./zcloud storage ls cloud://zcloud-testing/ | grep "zcloud-test.txt"
+if [[ $? == "0" ]]; then
+	echo "FAIL: list found zcloud-test.txt"
+	endTest 1
+fi
 removeFiles
 makeRecursiveFiles() {
 	mkdir -p testdata/dir
@@ -68,6 +78,16 @@ fi
 ./zcloud storage ls -r cloud://zcloud-testing/ | grep "dir/b.txt"
 if [[ $? != "0" ]]; then
 	echo "FAIL: recursive list did not output b.txt"
+	endTest 1
+fi
+./zcloud storage rm -r cloud://zcloud-testing/dir/ | grep "dir/b.txt"
+if [[ $? != "0" ]]; then
+	echo "FAIL: recursive remove"
+	endTest 1
+fi
+./zcloud storage ls -r cloud://zcloud-testing/ | grep "dir/b.txt"
+if [[ $? == "0" ]]; then
+	echo "FAIL: list found dir/b.txt"
 	endTest 1
 fi
 endTest 0
