@@ -11,7 +11,26 @@ endTest () {
 	fi
 	exit $1
 }
+makeTransferPrimary () {
+	TEMP=$ZCLOUD_PROV
+	ZCLOUD_PROV=$ZCLOUD_DEST_PROV
+}
+revertTransfer () {
+	ZCLOUD_PROV=$TEMP
+}
 makeTestFile
+./zcloud storage mb zcloud-testing
+if [[ $? != "0" ]]; then
+	echo "FAIL: make bucket zcloud-testing failed"
+	endTest 1
+fi
+makeTransferPrimary()
+./zcloud storage mb zcloud-transfer-testing
+if [[ $? != "0" ]]; then
+	echo "FAIL: make bucket zcloud-transfer-testing failed"
+	endTest 1
+fi
+revertTransfer()
 ./zcloud storage cp testdata/test.txt cloud://zcloud-testing/zcloud-test.txt
 if [[ $? != "0" ]]; then
 	echo "FAIL: upload failed"
@@ -30,8 +49,25 @@ fi
 ./zcloud storage ls cloud://zcloud-testing/ | grep "zcloud-test.txt"
 if [[ $? != "0" ]]; then
 	echo "FAIL: did not list uploaded file"
+	endTest 1p
+fi
+./zcloud storage transfer cloud://zcloud-testing/zcloud-test.txt cloud://zcloud-transfer-testing/zcloud-transfer.txt
+if [[ $? != "0" ]]; then
+	echo "FAIL: did not transfer"
 	endTest 1
 fi
+makeTransferPrimary()
+./zcloud storage ls cloud://zcloud-transfer-testing/ | grep "zcloud-transfer.txt"
+if [[ $? != "0" ]]; then
+	echo "FAIL: did not list transferred file"
+	endTest 1
+fi
+./zcloud storage rm cloud://zcloud-transfer-testing/zcloud-transfer.txt
+if [[ $? != "0" ]]; then
+	echo "FAIL: remove transfer failed"
+	endTest 1
+fi
+revertTransfer()
 ./zcloud storage rm cloud://zcloud-testing/zcloud-test.txt
 if [[ $? != "0" ]]; then
 	echo "FAIL: remove failed"
@@ -80,14 +116,76 @@ if [[ $? != "0" ]]; then
 	echo "FAIL: recursive list did not output b.txt"
 	endTest 1
 fi
-./zcloud storage rm -r cloud://zcloud-testing/dir/ | grep "dir/b.txt"
+./zcloud storage sync cloud://zcloud-testing/ cloud://zcloud-testing/synced/
+if [[ $? != "0" ]]; then
+	echo "FAIL: sync failed"
+	endTest 1
+fi
+./zcloud storage ls -r cloud://zcloud-testing/synced/ | grep "a.txt"
+if [[ $? != "0" ]]; then
+	echo "FAIL: recursive sync list did not output a.txt"
+	endTest 1
+fi
+./zcloud storage ls -r cloud://zcloud-testing/synced/ | grep "dir/b.txt"
+if [[ $? != "0" ]]; then
+	echo "FAIL: recursive sync list did not output b.txt"
+	endTest 1
+fi
+./zcloud storage rm cloud://zcloud-transfer-testing/synced/a.txt
+if [[ $? != "0" ]]; then
+	echo "FAIL: remove sync a.txt failed"
+	endTest 1
+fi
+./zcloud storage rm cloud://zcloud-transfer-testing/synced/dir/b.txt
+if [[ $? != "0" ]]; then
+	echo "FAIL: remove sync dir/b.txt failed"
+	endTest 1
+fi
+./zcloud storage transfer -r cloud://zcloud-testing/ cloud://zcloud-transfer-testing/
+if [[ $? != "0" ]]; then
+	echo "FAIL: recursive transfer failed"
+	endTest 1
+fi
+makeTransferPrimary()
+./zcloud storage ls -r cloud://zcloud-transfer-testing/ | grep "a.txt"
+if [[ $? != "0" ]]; then
+	echo "FAIL: recursive transfer list did not output a.txt"
+	endTest 1
+fi
+./zcloud storage ls -r cloud://zcloud-transfer-testing/ | grep "dir/b.txt"
+if [[ $? != "0" ]]; then
+	echo "FAIL: recursive transfer list did not output b.txt"
+	endTest 1
+fi
+./zcloud storage rm cloud://zcloud-transfer-testing/a.txt
+if [[ $? != "0" ]]; then
+	echo "FAIL: remove transfer a.txt failed"
+	endTest 1
+fi
+./zcloud storage rm cloud://zcloud-transfer-testing/dir/b.txt
+if [[ $? != "0" ]]; then
+	echo "FAIL: remove transfer dir/b.txt failed"
+	endTest 1
+fi
+./zcloud storage rb zcloud-transfer-testing
+if [[ $? != "0" ]]; then
+	echo "FAIL: remove bucket zcloud-transfer-testing failed"
+	endTest 1
+fi
+revertTransfer()
+./zcloud storage rm -r cloud://zcloud-testing/
 if [[ $? != "0" ]]; then
 	echo "FAIL: recursive remove"
 	endTest 1
 fi
 ./zcloud storage ls -r cloud://zcloud-testing/ | grep "dir/b.txt"
 if [[ $? == "0" ]]; then
-	echo "FAIL: list found dir/b.txt"
+	echo "FAIL: recursive list found dir/b.txt"
+	endTest 1
+fi
+./zcloud storage rb zcloud-testing
+if [[ $? != "0" ]]; then
+	echo "FAIL: remove bucket zcloud-testing failed"
 	endTest 1
 fi
 endTest 0
