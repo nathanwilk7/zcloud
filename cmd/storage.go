@@ -33,6 +33,8 @@ func init () {
 	StorageCmd.AddCommand(RmCmd)
 
 	StorageCmd.AddCommand(SyncCmd)
+
+	StorageCmd.AddCommand(TransferCmd)
 	
 	RootCmd.AddCommand(StorageCmd)
 }
@@ -117,3 +119,18 @@ var SyncCmd = &cobra.Command{
 	},
 }
 
+var TransferCmd = &cobra.Command{
+	Use: "transfer",
+	Short: "Transfer objects",
+	Long: "Transfer objects from one provider to another",
+	Args: cobra.ExactArgs(2),
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		tp := controller.TransferParams{
+			Src: args[0],
+			Dest: args[1],
+			DestProv: destProv,
+		}
+		controller.Transfer(pp, tp, out.New())
+	},
+}

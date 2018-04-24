@@ -506,6 +506,59 @@ func syncCloudToLocal (p z.Provider, bn, k, fileprefix string) error {
 	return nil
 }
 
+type TransferParams struct {
+	Src, Dest string
+	DestProv string
+}
+
+func Transfer (pp ProvParams, tp TransferParams, o out.Out) {
+	srcProv := pp.Name
+	sp, err := z.NewProvider(zppFromPp(pp))
+	pp.Name = tp.DestProv
+	dp, err := z.NewProvider(zppFromPp(pp))
+	sbn, sk, err := bucketNameKey(tp.Src)
+	if err != nil {
+		o.Fatal(err)
+	}
+	dbn, dk, err := bucketNameKey(tp.Dest)
+	if err != nil {
+		o.Fatal(err)
+	}
+	oqp := &z.ObjectsQueryParams{
+		Prefix: sk,
+	}
+	sb := sp.Bucket(sbn)
+	sos, err := sb.ObjectsQuery(oqp)
+	if err != nil {
+		o.Fatal(err)
+	}
+	db := dp.Bucket(dbn)
+	for _, so := range sos {
+		do := db.Object(dk + strings.Replace(so.Key(), sk, "", 1))
+		r, err := so.Reader()
+		if err != nil {
+			o.Fatal(err)
+		}
+		w, err := do.Writer()
+		if err != nil {
+			o.Fatal(err)
+		}
+		_, err = io.Copy(w, r)
+		if err != nil {
+			o.Fatal(err)
+		}
+		err = r.Close()
+		if err != nil {
+			o.Fatal(err)
+		}
+		err = w.Close()
+		if err != nil {
+			o.Fatal(err)
+		}
+	}
+	o.Messagef("Transferred %d files from %s to %s", len(sos), srcProv, tp.DestProv)
+}
+
 func shouldReplace (ss, ds int, slm, dlm time.Time) bool {
 	return ss != ds ||
 		dlm.Before(slm)
