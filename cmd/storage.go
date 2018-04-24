@@ -19,6 +19,7 @@ var (
 	cpRecursive bool
 	lsRecursive bool
 	rmRecursive bool
+	transferRecursive bool
 )
 
 
@@ -34,6 +35,7 @@ func init () {
 
 	StorageCmd.AddCommand(SyncCmd)
 
+	TransferCmd.Flags().BoolVarP(&transferRecursive, "recursive", "r", false, "Recursively transfer")
 	StorageCmd.AddCommand(TransferCmd)
 	
 	RootCmd.AddCommand(StorageCmd)
@@ -130,7 +132,36 @@ var TransferCmd = &cobra.Command{
 			Src: args[0],
 			Dest: args[1],
 			DestProv: destProv,
+			Recursive: transferRecursive,
 		}
 		controller.Transfer(pp, tp, out.New())
+	},
+}
+
+var MakeBucketCmd = &cobra.Command{
+	Use: "mb",
+	Short: "Make bucket",
+	Long: "Create a new bucket",
+	Args: cobra.ExactArgs(1),
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		mbp := controller.MakeBucketParams{
+			Name: args[0],
+		}
+		controller.MakeBucket(pp, mbp, out.New())
+	},
+}
+
+var RemoveBucketCmd = &cobra.Command{
+	Use: "rb",
+	Short: "Remove bucket",
+	Long: "Delete a bucket",
+	Args: cobra.ExactArgs(1),
+	Run: func (cmd *cobra.Command, args []string) {
+		pp := getProvParamsFromEnv()
+		rbp := controller.RemoveBucketParams{
+			Name: args[0],
+		}
+		controller.RemoveBucket(pp, rbp, out.New())
 	},
 }
