@@ -37,6 +37,10 @@ func init () {
 
 	TransferCmd.Flags().BoolVarP(&transferRecursive, "recursive", "r", false, "Recursively transfer")
 	StorageCmd.AddCommand(TransferCmd)
+
+	StorageCmd.AddCommand(MakeBucketCmd)
+
+	StorageCmd.AddCommand(RemoveBucketCmd)
 	
 	RootCmd.AddCommand(StorageCmd)
 }
