@@ -515,8 +515,14 @@ type TransferParams struct {
 func Transfer (pp ProvParams, tp TransferParams, o out.Out) {
 	srcProv := pp.Name
 	sp, err := z.NewProvider(zppFromPp(pp))
+	if err != nil {
+		o.Fatal(err)
+	}
 	pp.Name = tp.DestProv
 	dp, err := z.NewProvider(zppFromPp(pp))
+	if err != nil {
+		o.Fatal(err)
+	}
 	sbn, sk, err := bucketNameKey(tp.Src)
 	if err != nil {
 		o.Fatal(err)
@@ -572,6 +578,9 @@ type MakeBucketParams struct {
 
 func MakeBucket (pp ProvParams, mbp MakeBucketParams, o out.Out) {
 	p, err := z.NewProvider(zppFromPp(pp))
+	if err != nil {
+		o.Fatal(err)
+	}
 	err = p.Bucket(mbp.Name).Create()
 	if err != nil {
 		o.Fatal(err)
@@ -584,6 +593,9 @@ type RemoveBucketParams struct {
 
 func RemoveBucket (pp ProvParams, rbp RemoveBucketParams, o out.Out) {
 	p, err := z.NewProvider(zppFromPp(pp))
+	if err != nil {
+		o.Fatal(err)
+	}
 	err = p.Bucket(rbp.Name).Delete()
 	if err != nil {
 		o.Fatal(err)

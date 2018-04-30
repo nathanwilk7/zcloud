@@ -23,6 +23,7 @@ const (
 	awsIdEnv = "ZCLOUD_AWS_KEY_ID"
 	awsSecretEnv = "ZCLOUD_AWS_SECRET_KEY"
 	awsRegionEnv = "ZCLOUD_AWS_REGION"
+	gCloudProjectIDEnv = "ZCLOUD_GCLOUD_PROJECT_ID"
 	destProvEnv = "ZCLOUD_DEST_PROV"
 )
 
@@ -31,5 +32,6 @@ var (
 	awsId = os.Getenv(awsIdEnv)
 	awsSecret = os.Getenv(awsSecretEnv)
 	awsRegion = os.Getenv(awsRegionEnv)
+	gCloudProjectID = os.Getenv(gCloudProjectIDEnv)
 	destProv = os.Getenv(destProvEnv)
 )

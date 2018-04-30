@@ -54,6 +54,7 @@ func getProvParamsFromEnv () controller.ProvParams {
 		AwsId: awsId,
 		AwsSecret: awsSecret,
 		AwsRegion: awsRegion,
+		GCloudProjectID: gCloudProjectID,
 	}
 }
 
